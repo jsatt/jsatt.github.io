@@ -38,7 +38,7 @@
       {{- end }}
       <guid>{{ .Permalink }}</guid>
       <description>{{ .Content | html }}</description>
-      <dc:creator>{{ .Param "author.display_name" }}</dc:creator>
+      <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">{{ .Param "author.display_name" }}</dc:creator>
       {{- range ( .GetTerms "categories") }}
       <category>{{.Title}}</category>
       {{- end }}
