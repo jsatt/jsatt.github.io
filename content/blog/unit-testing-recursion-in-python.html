@@ -1,0 +1,45 @@
+---
+
+title: "Unit Testing Recursion in Python"
+slug: unit-testing-recursion-in-python
+date: 2014-12-11T17:05:39+00:00
+draft: false
+categories:
+- development
+tags:
+- hacks
+- mocking
+- python
+- testing
+related:
+- /blog/python-catalog
+- /blog/mocking-a-property-in-python
+- /blog/mocking-pythons-built-in-open-function
+- /blog/mocking-context-managers-in-python
+description: "Today I finally figured out the solution to a problem I&#39;ve been trying to solve for a while. It&#39;s kind of hacky and maybe a bad idea, but now I know it&#39;s possible. The problem has always been that I&#39;d like to test that a function recurses, but not needing it to actually have the recursion execute within to test. Just a unit test to assert that recursion is happening. After a little thought about how Python stores references I came up with this."
+
+---
+
+<p>Today I finally figured out the solution to a problem I&#39;ve been trying to solve for a while. It&#39;s kind of hacky and maybe a bad idea, but now I know it&#39;s possible. The problem has always been that I&#39;d like to test that a function recurses, but not needing it to actually have the recursion execute within to test. Just a unit test to assert that recursion is happening. After a little thought about how Python stores references I came up with this.</p>
+
+<pre class="language-python">
+<code>class ExampleTest(TestCase):
+    def setUp(self):
+        self.task = Task()
+    # ...
+    # other test stuff
+    # ...
+
+    def test_recursion(self):
+        original_func = self.task.run
+        self.mock.StubOutWithMock(Task, &#39;run&#39;)
+
+        Task.run(id=44)
+
+        self.mock.ReplayAll()
+        original_func(id=22)
+        self.mock.VerifyAll()
+</code></pre>
+
+<p>Because variables in Python are just references to objects in memory, if you create a new reference before stubbing out the primary reference, pointing it to a mock object, you can still access it via this new reference. You&#39;re now free to check that recusion is happening, without the need for it to actually recurse in the test.</p>
+

@@ -1,0 +1,96 @@
+---
+
+title: "Decorators vs Mixins for Django Class-Based Views"
+slug: decorators-vs-mixins-for-django-class-based-views
+date: 2014-01-13T20:21:58+00:00
+draft: false
+categories:
+- development
+tags:
+- django
+- python
+- class-based views
+description: "I&#39;ve been huge fan of Django&#39;s class-based views (CBVs) since I first tried them out in Django 1.4.  While they&#39;re much more complicated then the classic function based views, once you understand how they work, they&#39;re much more powerful, flexible and allow for DRYer code. I highly recommend anyone who hasn&#39;t delved into CBVs take a look at Class Class-based views or GoDjango."
+
+---
+
+<p>I&#39;ve been huge fan of Django&#39;s class-based views (CBVs) since I first tried them out in Django 1.4.&nbsp; While they&#39;re much more complicated then the classic function based views, once you understand how they work, they&#39;re much more powerful, flexible and allow for DRYer code. I highly recommend anyone who hasn&#39;t delved into CBVs take a look at <a href="http://ccbv.co.uk/">Class Class-based</a><a href="http://ccbv.co.uk/"> views</a> or <a href="https://godjango.com/15-class-based-views-part-1-templateview-and-redirectview/">GoDjango</a>.</p>
+
+<p>However, one of the early issues I ran into was for views that required Django user permissions. With function based views, Django&#39;s auth application provides decorators to check that users are logged in, have a specific permission, or pass other custom checks the developer can provide. You simply add the decorator to the view...</p>
+
+<pre><code class="language-python">@permission_required(&#39;auth.change_user&#39;)
+def user_list(request):
+	...</code></pre>
+
+<p>And now any user that doesn&#39;t have the required permission is redirected to the login page.</p>
+
+<p>For CBVs though, it&#39;s not quite that simple, it&#39;s the dispatch method that begins the process that you&#39;re used to picking up from with function based views. This means that to apply a decorator to the CBV, you have a couple of options.</p>
+
+<p>You can override the dispatch method to apply the decorator:</p>
+
+<pre><code class="language-python">class UserListView(ListView):
+    model = User
+
+    @my_custom_decorator
+    def dispatch(self, request, *args, **kwargs):
+        return super(UserListView, self).dispatch(request, *args, **kwargs)</code></pre>
+
+<p>You could write a reusable class view decorator:</p>
+
+<pre><code class="language-python">def class_view_decorator(function_decorator):
+    def deco(View):
+        View.dispatch = method_decorator(function_decorator)(View.dispatch)
+        return View
+    return deco
+
+@class_view_decorator(my_custom_decorator)
+class UserListView(ListView):
+    model = User</code></pre>
+
+<p>This second option is the one that I&#39;ve lived with for a long time. It&#39;s relatively clean and DRY and not much different than what you&#39;re used to seeing with function views.</p>
+
+<p>But recently I was pointed toward <a href="https://github.com/brack3t/django-braces">Django Braces</a>. It&#39;s a library of commonly (and not-so-commonly) needed view decorator-like functionality in the form of mixins. I immediately realized that when thinking about the functionality these decorators provide, I was stuck in the old way of doing things rather than looks at these views from an OOP perspective.</p>
+
+<p>Writing these decorators as mixins instead, makes them more flexible, extensible and DRYer, just like the move from function views to CBVs. You&#39;re able to build a base mixin that others can inherit from and extend. What would have been arguments to the decorator can are much cleaner as class attributes for the view that&#39;s extending it. You can even have views that apply affect the mixin on a one-off basis. Take for instance the &lt;code&gt;UserCheckMixin&lt;/code&gt; below.</p>
+
+<pre><code class="language-python">class UserCheckMixin(object):
+    user_check_failure_path = &#39;&#39;  # can be path, url name or reverse_lazy
+
+    def check_user(self, user):
+        return True
+
+    def user_check_failed(self, request, *args, **kwargs):
+        return redirect(self.user_check_failure_path)
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.check_user(request.user):
+            return self.user_check_failed(request, *args, **kwargs)
+  return super(UserCheckMixin, self).dispatch(request, *args, **kwargs)</code></pre>
+
+<p>I now simply add the mixin to a view:</p>
+
+<pre><code class="language-python">class UserListView(UserCheckMixin, ListView):
+    model = User
+    user_check_failure_path = &#39;auth_login&#39;
+
+    def check_user(self, user)
+        # do some check against the user here and return True or False</code></pre>
+
+<p>You can extend it to build a more useful mixin:</p>
+
+<pre><code class="language-python">class PermissionRequiredMixin(UserCheckMixin):
+    user_check_failure_path = &#39;auth_login&#39;
+    permission_required = None
+
+    def check_user(self, user):
+        return user.has_perm(self.permission_required)
+
+class UserListView(PermissionRequredMixin, ListView):
+    model = User
+    permission_required = &#39;auth.change_user&#39;
+    user_check_failure_path = &#39;auth_login&#39;</code></pre>
+
+<p>As you can see, once you&#39;ve defined the <code>PermissionRequiredMixin</code>, it&#39;s much cleaner, more object-oriented and I would argue more pythonic.</p>
+
+<p>If you&#39;re relying on built-in decorators, the <code>class_view_decorator</code> is a pretty helpful tool to have in your codebase. But for anything custom you may be writing, it really is hard to beat a mixin.</p>
+

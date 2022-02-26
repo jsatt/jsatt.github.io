@@ -1,0 +1,182 @@
+---
+
+title: "Manage All the Languages Using Python Virtualenv"
+slug: virtualenvs-for-all
+date: 2017-10-28T01:17:32+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- virtualenvs
+- ruby
+- go
+- node
+- rust
+related:
+- /blog/python-catalog
+- /blog/mocking-a-property-in-python
+- /blog/mocking-context-managers-in-python
+description: "A couple of years ago I was working with a couple other languages beside Python and began to get frustrated with their virtualenv equivalents. Not that they were doing anything wrong, just that they didn&#39;t work the way I was used to with virtualenvs. On top of that, they didn&#39;t work well together. I wanted to see if I could get something working that used the workflow I was used to and managed all the languages I was working with. So after a little poking around I found that many of the newer, &quot;modern&quot; languages had ways of running them from custom paths. I did a bit of work and before long I had a couple of these languages installed in virtualenvs and working side-by-side."
+
+---
+
+<p>A couple of years ago I was working with a couple other languages beside Python and began to get frustrated with their virtualenv equivalents. Not that they were doing anything wrong, just that they didn&#39;t work the way I was used to with virtualenvs. On top of that, they didn&#39;t work well together. I wanted to see if I could get something working that used the workflow I was used to and managed all the languages I was working with. So after a little poking around I found that many of the newer, &quot;modern&quot; languages had ways of running them from custom paths. I did a bit of work and before long I had a couple of these languages installed in virtualenvs and working side-by-side.</p>
+
+<p>Then, a couple days ago I ran across <a href="https://twitter.com/freakboy3742/status/923316996489408512">this conversation on Twitter</a>.</p>
+
+<blockquote data-lang="en">
+<p dir="ltr" lang="en">Most common Python issue I see with students is they&#39;ve installed Python three or four different ways &amp; have all their paths confused. 1/</p>
+&mdash; Jake VanderPlas (@jakevdp) <a href="https://twitter.com/jakevdp/status/922846245848150016?ref_src=twsrc%5Etfw">October 24, 2017</a></blockquote>
+
+<blockquote data-lang="en">
+<p dir="ltr" lang="en">I need to write up how I manage hundreds of projects without this being a problem. It took years to figure it out but it works. <a href="https://t.co/xM3fTs7e6u">https://t.co/xM3fTs7e6u</a></p>
+&mdash; Jeff Triplett ✨ (@webology) <a href="https://twitter.com/webology/status/923068721844948992?ref_src=twsrc%5Etfw">October 25, 2017</a></blockquote>
+
+<blockquote data-lang="en">
+<p dir="ltr" lang="en">A new development I&#39;m really excited about is not just virtualenv, but also putting any non-Python executables in the virtualenvwrapper bin dir so it&#39;s associated with the project too.</p>
+&mdash; Rachel SKellyton 🔮 (@wholemilk) <a href="https://twitter.com/wholemilk/status/923078806239264768?ref_src=twsrc%5Etfw">October 25, 2017</a></blockquote>
+
+<blockquote data-lang="en">
+<p dir="ltr" lang="en">I have flirted with that for non-Python over the years. I liked it but lacked enough Node/Ruby knowledge to pull it off medium term.</p>
+&mdash; Jeff Triplett ✨ (@webology) <a href="https://twitter.com/webology/status/923160645973012480?ref_src=twsrc%5Etfw">October 25, 2017</a></blockquote>
+
+<blockquote data-lang="en">
+<p dir="ltr" lang="en">THIS. It&rsquo;s always intrigued me that there isn&rsquo;t a &ldquo;virtualenv for *all*&rdquo; - one env, virtualising Py, Ruby, C&hellip; whatever.</p>
+&mdash; Russell Keith-Magee (@freakboy3742) <a href="https://twitter.com/freakboy3742/status/923316996489408512?ref_src=twsrc%5Etfw">October 25, 2017</a></blockquote>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+<p>And I realized that I had solved this problem for myself a while back and never really mentioned to anyone except a couple coworkers from time to time, and I certainly never shared it on this site or social media. So I&#39;m going to take this opportunity to share how I manage several different languages using virtualenv.</p>
+
+<p>One last note before we begin. I&#39;m exclusively a Linux user and have been for many years. Most of these commands will work on Macs through the magic of Unix, but I have neither the knowledge or tools to troubleshoot Mac or Windows specific problems. Feel free to share solutions to problems you run into in the comments for others, but I will likely not be able to help too much for those OS&#39;s. If you&#39;re on Windows, please just use the <a href="https://msdn.microsoft.com/en-us/commandline/wsl/about">Subsytem for Linux</a>.</p>
+
+<h2>Python</h2>
+
+<p>With virtualenv being part of the Python tool chain, you&#39;re clearly going to need Python up and running. On Linux and Mac, your system probably already has it installed and ready to go. If your project works fine on this version or you&#39;re only managing other languages, this version should be fine. If you want to use a specific version, check out&nbsp;<a href="https://github.com/pyenv/pyenv">pyenv</a> or <a href="https://www.python.org/downloads/">downloading the source</a>, but they each have docs that can walk you through those processes.</p>
+
+<h3>Installing virtualenv</h3>
+
+<p>I recommend, and assume for the rest of this post, using virtualenvwrapper and virtualenvs stored at <code>~/.virtualenv</code>. If you have other preferences, everything here should still work, but you will need to replace my references to <code>~/.virtualenvs</code> with the path to your environment.</p>
+
+<p>Assuming you already have <a href="https://pip.pypa.io/en/stable/installing/">pip installed</a>, with your Python version, you need to make sure that <code>~/.local/bin</code> (or <code>/home/&lt;user&gt;/.local/bin</code> or <code>/Users/&lt;user&gt;/.local/bin</code>) is in your $PATH (<code>echo $PATH</code>). If not, add the following to your <code>~/.profile</code> (or .zprofile, config.fish, etc.)</p>
+
+<pre class="language-bash">
+<code>PATH=~/.local/bin:$PATH
+</code></pre>
+
+<p>If you needed to make this change, you should probably reboot your machine now to load that value into all your shell sessions.</p>
+
+<p>This is going to allow you to use the <code>--user</code> flag for pip which installs the packages specified at a &quot;global&quot; level just for that user. This is useful for packages like <code>virtualenv</code>, <code>virtualenvwrapper</code>, <code>ipdb</code>, etc which can be used to manage Python and your environments. This should NOT be used for packages used within your project.</p>
+
+<p>So with that set, install virtualenv:</p>
+
+<pre>
+<code>pip install --user virtualenv virtualenvwrapper</code></pre>
+
+<p>Now you want need to edit your <code>~/.profile</code> (or equivalent) and add the following and restart your shell.</p>
+
+<pre>
+export WORKON_HOME=$HOME/.virtualenvs
+source $HOME/.local/bin/virtualenvwrapper.sh
+</pre>
+
+<h3>Create an Virtual Environment</h3>
+
+<p><code>virtualenvwrapper</code> make this easy. If you&#39;re using your OS&#39;s default Python, just use the following.</p>
+
+<pre>
+<code>mkvirtualenv myenv
+</code></pre>
+
+<p>If you want to use a different version you&#39;ve installed elsewhere, use the <code>-p</code> flag to specify it&#39;s path.</p>
+
+<pre>
+<code>mkvirtualenv myenv -p /path/to/python</code></pre>
+
+<p>From now on, to activate this environment again just use: <code>workon myenv</code>.</p>
+
+<h3>Using virtualenvs</h3>
+
+<p>Since you&#39;re opting to use virtualenvs for managing other languages, I&#39;m going to assume you&#39;re familiar with the day-to-day process of using them. If you&#39;re not familiar, now is a good time to check out the <a href="https://virtualenv.pypa.io/en/stable/">virtualenv</a> and <a href="https://virtualenvwrapper.readthedocs.io/en/latest/">virtualenvwrapper</a> docs and Google for more info.</p>
+
+<h2>NodeJs</h2>
+
+<p>Node is incredibly easy to setup in virtualenvs, thanks largely to the fact that there is a Python package to handle it for you.</p>
+
+<pre>
+<code>pip install nodeenv</code>
+</pre>
+
+<p>This package provides a tool that does everything for you. If you are using node in many projects, you might consider just installing nodeenv with the <code>--user</code> flag as discussed above.</p>
+
+<p>Now install node using something like one of the following.</p>
+
+<pre>
+<code>nodeenv -p  # install into active virtualenv
+nodeenv .env/  # install into a virtualenv at a specific path</code>
+nodeenv -p -n 8.8.1  # install a specific version of node
+</pre>
+
+<p>That&#39;s it. It&#39;ll download and install the appropriate version, then update the activate script for your environment to provide all the environment variables Node needs to know it.</p>
+
+<p>Keep in mind that npm has the concept of &quot;global&quot; and &quot;local&quot; modules, in this case &quot;local&quot; will continue to be the current working directory where npm is run, and &quot;global&quot; will be in the <code>lib</code> directory of the virtualenv you specified.</p>
+
+<p>Use the <code>node</code> and <code>npm</code> commands for manage Node in this environment further.</p>
+
+<h2>Ruby</h2>
+
+<p>Much like Node, some kind soul has provided a Python package for managing Ruby&nbsp; versions. This may also be a good candidate for installing with the <code>--user</code> flag if you&#39;re gonig to use it often.</p>
+
+<pre>
+<code>pip install rubyenv</code></pre>
+
+<p>Now you simply install the Ruby version of choice.</p>
+
+<pre>
+<code>rubyenv install 2.4.2</code></pre>
+
+<p>Since it&#39;s building from source you may need to install some system level packages for the build to succeed, but it should let you know.</p>
+
+<p>Now use the <code>ruby</code> and <code>gem</code> commands to setup and run whatever you need.</p>
+
+<h3>Go (Golang)</h3>
+
+<p>Go is a little more work to set up, but not much. There&#39;s not a virtualenv aware tool, so you&#39;ll need to download the <a href="https://golang.org/dl/">Go Tools binaries</a>. Be sure to grab the appropriate tar.gz archive, not an installer, for your OS. Once you&#39;ve got the archive, you just need to extract it into your virtualenv.</p>
+
+<pre>
+tar -C $VIRTUAL_ENV -xvf download/go1.9.2.linux-amd64.tar.gz --strip 1</pre>
+
+<p>The <code>-C $VIRTUAL_ENV</code> and <code>--strip 1</code> are particularly important for the contents of the <code>go</code> directory inside the archive to be extracted into you virtualenv correctly.</p>
+
+<p>Next, you need to tell Go where it&#39;s based. The best way to do this is have virtualenv set the <code>GOROOT</code> environment variable for you when you activate the virtualenv. If you only ever use Go inside a virtualenv, you can add the following to you user&#39;s <code>~/.virtualenv/postactivate</code>, then you only need to do the extraction step above when you create a new virtualenv. If you only want to use virtualenv Go for this one virtualenv, add the following to <code>~/.virtualenv/&lt;env name&gt;/bin/postactivate</code>.</p>
+
+<pre>
+GOROOT=&quot;$VIRTUAL_ENV&quot;
+</pre>
+
+<p>Deactivate and reactivate your vritualenv and you&#39;re all set. Manage everything using the <code>go</code> command as usual.</p>
+
+<h3>Rust</h3>
+
+<p>Rust&#39;s primary install tool, rustup, has the ability to install into custom paths. You just need to add a couple environment variables to tell it how, and we&#39;ll let virtualenv activation handle that for us.</p>
+
+<p>Like Go, if you only use Rust within virtualenvs, and want to save a step in the future, you can add the following to <code>~/.virtualenvs/postactivate</code>. If you just want to set up this one virtualenv, add it to <code>~/.virtualenvs/&lt;env name&gt;/bin/postactivate</code>.</p>
+
+<pre>
+<code>CARGO_HOME=$VIRTUAL_ENV
+RUSTUP_HOME=$VIRTUAL_ENV</code>
+</pre>
+
+<p>Now&#39;s a good time to deactivate and reactivate your virtualenv to load those variables. And we&#39;re ready to run the rustup setup script.</p>
+
+<pre>
+curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path</pre>
+
+<p>Done. Now <code>rustc</code>, <code>cargo</code> and all the other Rust commands should be good to go.</p>
+
+<h2>Conclusion</h2>
+
+<p>That&#39;s it. Now you&#39;ve got a pretty solid set of tools for developing different languages. They should all run side-by-side in any mixed and matched set you want to use and safely quarantined from the rest of your system.</p>
+
+<p>I&#39;m sure there are several other languages that can be managed this way, and if I run across more I&#39;ll try to update this post with details. Otherwise I hope this makes your development processes better.</p>
+

@@ -1,0 +1,79 @@
+---
+
+title: "Mocking Context Managers in Python"
+slug: mocking-context-managers-in-python
+date: 2014-02-28T22:33:13+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- testing
+related:
+- /blog/python-catalog
+- /blog/virtualenvs-for-all
+- /blog/unit-testing-recursion-in-python
+- /blog/mocking-a-property-in-python
+- /blog/mocking-pythons-built-in-open-function
+description: "I&#39;ve often found Python&#39;s context managers to be pretty useful. They make a nice interface that can handle starting and ending of temporary things for you, like opening and closing a file."
+
+---
+
+<p>I&#39;ve often found Python&#39;s context managers to be pretty useful. They make a nice interface that can handle starting and ending of temporary things for you, like opening and closing a file.</p>
+
+<p>For example:</p>
+
+<pre>
+<code class="language-python">f = open(&#39;myfile.txt&#39;, &#39;w&#39;)
+try:
+    for row in records:
+        f.write(row)
+finally:
+     f.close()</code></pre>
+
+<p>can be replaced with</p>
+
+<pre>
+<code class="language-python">with open(&#39;myfile.txt&#39;, &#39;w&#39;) as f:
+    for row in records:
+        f.write(row)</code></pre>
+
+<p>This last week I was working with the ZipFile module and wanted to use it&#39;s context manger interface, but I ran into a little confusion when it came to unit testing. After a little better understanding of how context managers work, I figured out that the <code>__enter__</code> and <code>__exit__</code> methods are what really makes a context handler. As <a href="http://pymotw.com/2/contextlib/">explained at PyMOTW</a>, when you invoke <code>with</code> on a class, __enter__ is called and should return an object to be used in the context (<code>f</code> in the above example), the code within the block is executed, and <code>__exit__</code> is called no matter the outcome of the block. So both of these would be roughly equivalent, assuming <code>do_stuff</code> doesn&#39;t raise an exception.</p>
+
+<pre>
+<code class="language-python">with Context(foo) as bar:
+    do_stuff(bar)
+
+c = Context(foo)
+bar = c.__enter__()
+try:
+    do_stuff(bar)
+finally:
+    c.__exit__(None, None, None)</code></pre>
+
+<p>With this understanding, here is the solution to my mocking problem using PyMox.</p>
+
+<pre>
+<code class="language-python">#module/tasks.py
+def zip_it_up(filename):
+    with ZipFile(filename, &#39;w&#39;) as f:
+        for file in FILES:
+            f.write(file.path, file.name)
+
+# tests.py
+... # setup and stuff is up here somewhere
+def test_building_zipfile(self):
+    self.mock.StubOutWithMock(module.tasks, &#39;ZipFile&#39;)
+&nbsp;&nbsp;&nbsp; mock_zip = self.mock.CreateMockAnything()
+&nbsp;&nbsp;&nbsp; module.tasks.ZipFile(&#39;/tmp/export.zip&#39;, &#39;w&#39;).AndReturn(mock_zip)
+&nbsp;&nbsp;&nbsp; mock_zip.__enter__().AndReturn(mock_zip)
+&nbsp;&nbsp;&nbsp; mock_zip.write(&#39;/tmp/export-1.xml&#39;, &#39;export-1.xml&#39;)
+&nbsp;&nbsp;&nbsp; mock_zip.write(&#39;/tmp/export-2.xml&#39;, &#39;export-2.xml&#39;)
+&nbsp;&nbsp;&nbsp; mock_zip.__exit__(None, None, None)
+
+    self.mock.ReplayAll()
+    zip_it_up()
+    self.mock.VerifyAll()</code></pre>
+
+<p>Mocking out ZipFile allows us to return a mock object from it&#39;s instantiation. We can then set the expectation that __enter__ will be called on the instance, returning the instance itself, expecting <code>write</code> to be called twice on the instance and finally __exit__ to be called. The three arguments of <code>None</code> here are to indicate that an exception isn&#39;t expected. If the code inside the context block were to raise an exception, these arguments would be the <code>type</code>, <code>value</code> and <code>traceback</code> as returned by <code>raise</code>. In the event you are testing for an exception, these arguments should be set accordingly when setting expectations.</p>
+

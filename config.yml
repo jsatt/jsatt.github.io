@@ -1,0 +1,44 @@
+baseURL: https://jsatt.com/
+languageCode: en-us
+theme: jsatt
+title: Jeremy Satterfield
+params:
+  tagline: Coding, Making and Tulsa Life
+  author:
+    user_name: jsatt
+    display_name: Jeremy Satterfield
+disableHugoGeneratorInject: true
+enableEmoji: true
+enableGitInfo: true
+relativeURLs: true
+timeZone: UTC
+watch: true
+
+mediaTypes:
+  application/rss+xml:
+    suffixes: ['xml']
+  application/atom+xml:
+    suffixes: ['xml']
+
+outputFormats:
+  RSS:
+    baseName:
+    mediaType: 'application/rss+xml'
+    path: /blog/feeds/rss/
+  ATOM:
+    mediaType: 'application/atom+xml'
+    path: /blog/feeds/atom/
+
+outputs:
+  home:
+  - HTML
+  - RSS
+  - ATOM
+  page:
+  - HTML
+  section:
+  - HTML
+  taxonomy:
+  - HTML
+  term:
+  - HTML

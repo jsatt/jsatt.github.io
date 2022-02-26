@@ -1,0 +1,13 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ range $idx, $page := .Pages }}
+<h3>
+{{ if .Params.thumbnail }}
+    <a href="{{ .Permalink }}" target="_blank"><img alt="" src="{{ relURL .Params.thumbnail }}" style="float:{{ if (eq (mod $idx 2) 0) }}left{{ else }}right{{ end }}; height:256px; width:256px" />{{ .Title }}</a>
+{{ else }}
+    {{ .Title }}
+{{ end }}
+</h3>
+<p>{{ safeHTML (htmlUnescape .Description) }}</p>
+{{ end }}
+{{ end }}

@@ -1,0 +1,16 @@
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="nav-footer">
+                    <ul class="list-unstyled">
+                    {{- range .Site.Menus.footer }}
+                        <li id="footer-menu-{{ .Page.Params.slug }}"><a href="{{ absURL .URL }}">{{ .Name }}</a></li>
+                    {{ end -}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+

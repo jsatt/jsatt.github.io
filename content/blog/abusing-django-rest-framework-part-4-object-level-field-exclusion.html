@@ -1,0 +1,43 @@
+---
+
+title: "Abusing Django Rest Framework Part 4: Object-level field exclusion"
+slug: abusing-django-rest-framework-part-4-object-level-field-exclusion
+date: 2014-03-27T16:55:11+00:00
+draft: false
+categories:
+- development
+tags:
+- django
+- django rest framework
+- python
+- hacks
+related:
+- /blog/abusing-django-rest-framework-part-3-object-level-read-only-fields
+- /blog/abusing-django-rest-framework-part-2-non-rate-based-throttling
+- /blog/abusing-django-rest-framework-part-1-non-model-endpoints
+description: "Similar to the object-level readonly field from my previous post, there are some cases where we want to exclude certain fields based on what object the user is trying to access. You could overwrite the views get_serializer method to use a different serializer based on their access, but if nesting serializers is a possiblility this get messy, somewhere in the neighborhood of O(n2). Another option is to modify a serializers to_native method."
+
+---
+
+<p>Similar to the object-level readonly field from my <a href="/blog/abusing-django-rest-framework-part-3-object-level-read-only-fields/">previous post</a>, there are some cases where we want to exclude certain fields based on what object the user is trying to access. You could overwrite the views <code>get_serializer</code> method to use a different serializer based on their access, but if nesting serializers is a possiblility this get messy, somewhere in the neighborhood of <a href="http://rob-bell.net/2009/06/a-beginners-guide-to-big-o-notation/" target="_blank">O(n<sup>2</sup>)</a>. Another option is to modify a serializers <code>to_native</code> method.</p>
+
+<pre>
+<code class="language-python">class SampleSerializer(serializers.ModelSerializer):
+    ...
+
+    def to_native(self, obj):
+        restricted = not obj.review_set.filter(
+            client__plan__account_details=True).exists()
+
+        if restricted:
+            self.fields.pop(&#39;billing_address&#39;, None)
+        return super(SampleSerializer, self).to_native(obj)</code></pre>
+
+<p>The <code>to_native</code> method is responsible for turning the Python object into a simple, serializable value. This means it has to be called for every object that it being retrieved, so it will always be able to affect your output, even when nested.</p>
+
+<p>One drawback is that it only works in conjunction with retrieve views. If the field is defined in the serializer at any point as writeable, the users can still update that field, even if they can&#39;t see it. This can be a pretty big security risk when used with update views.</p>
+
+<h2>Another Approach</h2>
+
+<p>Having implemented this method several months ago, based on a spec that was several months old at the time, I would likely approach the root issue from a different angle if it came up again. Maybe creating updating the spec to have a consistant api response and return blank values for the unauthorized fields would be a better approach. <code>SerializerMthodField</code> has the potential to make this approach much cleaner.</p>
+

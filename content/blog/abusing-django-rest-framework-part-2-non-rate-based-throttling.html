@@ -1,0 +1,53 @@
+---
+
+title: "Abusing Django Rest Framework Part 2: Non-rate-based Throttling"
+slug: abusing-django-rest-framework-part-2-non-rate-based-throttling
+date: 2014-02-19T16:43:17+00:00
+draft: false
+categories:
+- development
+tags:
+- django
+- django rest framework
+- hacks
+- python
+related:
+- /blog/abusing-django-rest-framework-part-4-object-level-field-exclusion
+- /blog/abusing-django-rest-framework-part-3-object-level-read-only-fields
+- /blog/abusing-django-rest-framework-part-1-non-model-endpoints
+description: "Anyone running an API that can be reached by the outside world should most definitely be concerned that someone might pummel their server by making a massive amount of requests to that one endpoint that requires a bunch of on-the-fly calculations. Enter Django Rest Framework&#39;s throttling. It allows you to easily configure the framework to stop allowing requests from a user once they&#39;ve made so many requests in a period of time. Whether you&#39;re concerned about requests over a sustained period of time or in short bursts, rate limiting with throttles will handle it."
+
+---
+
+<p>Anyone running an API that can be reached by the outside world should most definitely be concerned that someone might pummel their server by making a massive amount of requests to that one endpoint that requires a bunch of on-the-fly calculations. Enter Django Rest Framework&#39;s throttling. It allows you to easily configure the framework to stop allowing requests from a user once they&#39;ve made so many requests in a period of time. Whether you&#39;re concerned about requests over a sustained period of time or in short bursts, rate limiting with throttles will handle it.</p>
+
+<p>However, there are times you might need to limit based on something less consistent than number of calls per minute or day. One example we we ran into was clients submitting requests for a process that requires a lot of human work to complete, and the possibility that a large number of these requests might mean that the client doesn&#39;t actually understand the real purpose of the feature, or an indicator of a bigger problem for that client. If you can limit these clients to a certain number of outstanding requests at any given time, this allows for the time for our client contacts to process the appropriate requests or contact them if the requests are inappropriate.</p>
+
+<p>While the throttles provided by Rest Framework are all about rate limiting, writing a custom throttle to do this is pretty simple.</p>
+
+<pre><code class="language-python">### throttles.py
+from django.db.models import Count
+from rest_framework.throttling import BaseThrottle
+from rest_framework.exceptions import Throttled
+
+from .models import Inspection
+
+
+class InspectionThrottle(BaseThrottle):
+    def allow_request(self, request, view):
+        inspections  = Inspection.object.filter(client=view.client)
+        if inspections &lt; 15:
+            return True
+
+        raise Throttled(detail=(
+            &quot;You have reached the limit of 15 open requests. &quot;
+            &quot;Please wait until your existing requests have been &quot;
+            &quot;evaluated before submitting additional disputes. &quot;))
+
+###views.py
+class InspectionCreateView(CreateAPIView):
+    model = Inspection
+    throttle_classes  = InspectionThrottle</code></pre>
+
+<p>By simply defining an <code>allow_request</code> method you are free to use whatever logic you want to throttle requests, so long as you return <code>True</code> to allow the request and raise the <code>Throttled</code> exception to deny the request. <code>Throttled</code> also accepts a kwarg of wait which will set the <code>X-Throttle-Wait-Second</code> header for notifying the client how long to wait before trying again. This is mostly just useful for rate limiting, but maybe you&#39;ll be clever and have a reason to use it.</p>
+

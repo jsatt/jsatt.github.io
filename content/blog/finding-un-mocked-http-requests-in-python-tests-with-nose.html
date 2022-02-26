@@ -1,0 +1,50 @@
+---
+
+title: "Finding Un-mocked HTTP requests in Python tests with Nose"
+slug: finding-un-mocked-http-requests-in-python-tests-with-nose
+date: 2014-01-16T18:40:58+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- nose
+- testing
+- mocking
+description: "I&#39;m a big fan of proper unit testing with mocking. So I&#39;m pretty disappointed when we run across a unit that is not only not mocked properly, but results in real-world consequences outside the testing environment. One case we&#39;ve run into couple of times now is tests that are making actual outbound HTTP requests to remote servers. Since clients don&#39;t necessarily like getting fake information posted to their servers every time you run tests, I figured this was a good time to get to the bottom of this."
+
+---
+
+<p>I&#39;m a big fan of proper unit testing with mocking. So I&#39;m pretty disappointed when we run across a unit that is not only not mocked properly, but results in real-world consequences outside the testing environment. One case we&#39;ve run into couple of times now is tests that are making actual outbound HTTP requests to remote servers. Since clients don&#39;t necessarily like getting fake information posted to their servers every time you run tests, I figured this was a good time to get to the bottom of this.</p>
+
+<p>I caught this particular case while researching another broken test and noticed that one particular test was hanging for several second before passing every time. After digging in, I found that the view being tested called a method, which called a method, which executed a task that included a <code>requests.post()</code> call. It was quick to mock out the first method call that spawned it all, but I was worried about next time we test against that view and forget the mock again.</p>
+
+<p>After a little research I found that Nose provides the ability to run package and module level setup and teardown functions. Simply add <code>setUpPackage</code>, <code>setUpModule</code>, <code>tearDownPackage</code> and <code>tearDownModule</code> functions to the <code>__init__.py</code> of the package or module appropriately and you&#39;re free to do any setup and cleanup you need for the package or module as a whole. This can include setting up fixtures, test databases, or, as I discovered, mocking. Placing the following code in the <code>__init__.py</code> of my project, quickly identified another instance where we were making outbound requests that we weren&#39;t catching.</p>
+
+<pre class="line-numbers">
+<code class="language-python">pkg_mox = None
+
+
+def setUpPackage():
+    global pkg_mox
+    import urllib
+    import urllib2
+    import mox
+    import requests
+    pkg_mox = mox.Mox()
+    pkg_mox.StubOutWithMock(requests.api.sessions.Session, &#39;send&#39;)
+    pkg_mox.StubOutWithMock(urllib.URLopener, &#39;open&#39;)
+    pkg_mox.StubOutWithMock(urllib2.OpenerDirector, &#39;open&#39;)
+    pkg_mox.ReplayAll()
+
+
+def tearDownPackage():
+    pkg_mox.VerifyAll()
+    pkg_mox.UnsetStubs()</code></pre>
+
+<p>Cases where requests were being made, but not properly mocked, raised the &quot;Unexpected method called&quot; exception you&#39;d expect, including the traceback to the offending test.</p>
+
+<p>Through the years, we&#39;ve gone through a few iterations on how we like making our http calls. While we&#39;ve settled on the requests library for now you&#39;re always going to be dealing with legacy code. This flow catches calls to all three major request libraries, just in case. Mocking the underlying methods of the libraries catches all of the common paths for executing requests for each, while still allowing those common cases to be properly mocked in your test code.</p>
+
+<p>I&#39;m certain there are many other libraries that this could be helpful for. Now let&#39;s get to writing better unit tests.</p>
+

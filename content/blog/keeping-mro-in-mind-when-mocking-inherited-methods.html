@@ -1,0 +1,107 @@
+---
+
+title: "Keeping MRO In Mind When Mocking Inherited Methods"
+slug: keeping-mro-in-mind-when-mocking-inherited-methods
+date: 2014-10-16T19:33:11+00:00
+draft: false
+categories:
+- development
+tags:
+- mocking
+- python
+- testing
+related:
+- /blog/mocking-a-property-in-python
+- /blog/mocking-pythons-built-in-open-function
+description: "So I just spent a couple of hours banging my head on a ridiculous PyMox mocking issue and though I&#39;d share. Here is an example of the existing code."
+
+---
+
+<p>So I just spent a couple of hours banging my head on a ridiculous PyMox mocking issue and though I&#39;d share. Here is an example of the existing code.</p>
+
+<pre class="language-python">
+<code># views.py
+class MyBaseView(BaseView):
+    def get_stuff(self):
+        # this is doing things
+
+class SpecificView(MyBaseView):
+    example = True
+
+    def send_stuff(self):
+        stuff = self.get_stuff()
+        # do other things
+
+
+# tests.py
+class SpecificViewTest(TestCase):
+   def setUp(self):
+       self.view = SpecificView()
+       self.mox = mox.Mox()
+
+   def tearDown(self):
+       self.mox.UnsetStubs()
+
+   def test_send_stuff(self):
+       self.mox.StubOutWithMock(MyBaseView, &#39;get_stuff&#39;)
+       MyBaseView.get_stuff().AndReturn([&#39;list&#39;, &#39;of&#39;, &#39;things&#39;])
+
+       self.mox.ReplayAll()
+       self.view.send_stuff()
+       self.mox.VerifyAll()
+
+       # do assertions
+</code></pre>
+
+<p>This was all fine and working for months, until I added the following.</p>
+
+<pre>
+<code># views.py
+class ExtraSpecificView(SpecificView):
+    def other_stuff(self):
+        self.get_stuff()
+        # do more things again
+
+# test.py
+class ExtraSpecificViewTest(TestCase):
+   def setUp(self):
+       self.view = ExtraSpecificView()
+       self.mox = mox.Mox()
+
+   def tearDown(self):
+       self.mox.UnsetStubs()
+
+   def test_other_stuff(self):
+       self.mox.StubOutWithMox(SpecifcView, &#39;get_stuff&#39;)
+       SpecificView.get_stuff().AndReturn([&#39;more&#39;, &#39;things&#39;])
+
+       self.mox.ReplayAll()
+       self.view.other_stuff()
+       self.mox.VerifyAll()
+</code></pre>
+
+<p>So what started happening at this point is <code>SpecificViewTest.test_send_stuff</code> began failing with this.</p>
+
+<pre>
+<code>ExpectedMethodCallsError: Verify: Expected methods never called:
+  0.  get_stuff.__call__() -&gt; [&#39;list&#39;, &#39;of&#39;, &#39;things&#39;]</code></pre>
+
+<p>It would only fail when <code>ExtraSpecificViewTest</code> ran before <code>SpecificViewTest</code> which, with nose, it does by default. So I knew it had to have something to do with the mocking in <code>ExtraSpecificViewTest.test_other_stuff</code>. After more playing and banging my head I came up with this working theory which seems correct the more I think on it.</p>
+
+<p>When you mock out a method on a class, the mocking library stores the original method and replaces it with the mock function. When you tell the library to stop mocking the method, <code>mox.UnsetStubs</code> in this case, it grabs that original method it stored before and assigns it back to the appropriate attribute on the class, restoring it&#39;s original functionality.</p>
+
+<p>However, in my class I was mocking a method that <code>SpecificView</code> inherited from <code>MyBaseView</code>. When the library grabs the original method for storing Python sees that SpecificView doesn&#39;t have a <code>get_stuff</code> method of it&#39;s own, so it moves up the <abbr title="Method Resolution Order">MRO</abbr> and grabs <code>MyBaseView.get_stuff</code> and the library stores that and assigns a mock function to the <code>get_stuff</code> attribute on the <strong>class</strong> of <code>SpecificView</code>. Then, when the library goes to un-stub the method, it grabs the stored <code>get_stuff</code> Python gave it from <code>MyBaseView</code> and assigns it also to the <code>get_stuff</code> attribute of the <strong>class</strong> of <code>SpecificView</code>. Finally, when <code>SpecificViewTest.test_set_stuff</code> runs, <code>send_stuff</code> calls <code>SpecificView</code>&#39;s <code>get_stuff</code>, instead of moving up the MRO as to used to, Python now sees that the <code>SpecificView</code> class has it&#39;s own <code>get_stuff</code> method (which doesn&#39;t have a super call), so it doesn&#39;t move up the MRO, therefore <code>MyBaseView</code> is never called as expected and raising a failure when verified.</p>
+
+<p>So this became the fix.</p>
+
+<pre>
+<code>#tests.py
+class ExtraSpecificViewTest(TestCase):
+    ...   
+    def test_other_stuff(self):
+       self.mox.StubOutWithMox(MyBaseView, &#39;get_stuff&#39;)
+       MyBaseView.get_stuff().AndReturn([&#39;more&#39;, &#39;things&#39;])
+</code></pre>
+
+<p>It&#39;s a convoluted bug that may or may not be specific to PyMox or other mocking libraries, but I&#39;m not sure how they should be properly handling something like this. So I guess the moral of the story is to mock methods from the class which the were originally defined, not just the class you inherited from.</p>
+

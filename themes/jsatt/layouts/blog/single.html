@@ -1,0 +1,48 @@
+{{ define "body_id" }}page_blog_post{{ end }}
+{{ define "main" }}
+<div class="row">
+    <article class="col-md-8" itemscope itemtype="http://schema.org/BlogPosting">
+        <h1 class="headline" itemprop="headline">{{ .Title }}</h1>
+        <h6 class="post-meta">
+            Posted by:
+            <span itemscope itemprop="author" itemtype="http://schema.org/Person">
+                <span itemprop="name">{{ .Param "author.display_name" }}</span>
+            </span>
+            {{ $categories := ( .GetTerms "categories") }}
+            {{ if $categories }}
+                in
+                {{ $cat_len := len $categories }}
+                {{ range $cat_idx, $cat_item := $categories }}
+            <a itemprop="articleSection" href="{{ .Permalink }}">{{ .LinkTitle }}</a>{{ if (and (gt $cat_len 1) (lt $cat_idx (sub $cat_len 1))) }}, {{ end }}
+                {{ end }}
+            {{ end }}
+            on <span itemprop="datePublished">{{ .PublishDate.Format "2006-01-02" }}</span>
+            {{ $tags := ( .GetTerms "tags") }}
+            {{ if $tags }}
+                <ul class="list-inline tags">
+                    <li>Tags:</li>
+                {{ range $tags }}<li><a href="{{ .Permalink }}">{{ .LinkTitle }}</a></li>{{ end }}
+                </ul>
+            {{ end }}
+        </h6>
+        <div class="post" itemprop="articleBody">
+            {{ .Content }}
+        </div>
+    </article>
+    <aside class="col-md-4">
+        {{ partial "social_icons" }}
+        {{ if .Params.related }}
+        <div id="related-posts">
+            {{ range $idx, $url := .Params.related }}
+            {{ $page := $.Site.GetPage $url }}
+            <div class="related-post">
+                <a href="{{ $page.Permalink }}">{{ $page.Title }}</a>
+                <div class="timesince">{{ $page.PublishDate.Format "2006-01-02" }}</div>
+            </div>
+            {{ end }}
+        </div>
+        {{ end }}
+        {{ partial "keyword_sidebar.html" .Site -}}
+    </aside>
+</div>
+{{ end }}

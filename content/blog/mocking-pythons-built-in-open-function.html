@@ -1,0 +1,91 @@
+---
+
+title: "Mocking Python&#39;s built-in open function"
+slug: mocking-pythons-built-in-open-function
+date: 2014-04-11T17:25:38+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- testing
+- mocking
+related:
+- /blog/unit-testing-recursion-in-python
+- /blog/keeping-mro-in-mind-when-mocking-inherited-methods
+- /blog/mocking-a-property-in-python
+- /blog/mocking-context-managers-in-python
+description: "A while back I was working on my podcast client and ran into an issue downloading large files. The root problem was that all of Django&#39;s FileField backends store the file (or file-like object) to memory then saves it to disk, and the cubieboard system I was using had limitied memry resources, resulting in &quot;out of memory&quot; errors. After much searching and hacking I finally settled on just storing the file to disk myself using requests streaming argument. This allowed me to download the file in chunks and save directly to disk and then tell the Django field where I placed it, as you can see here."
+
+---
+
+<p>A while back I was working on my <a href="https://github.com/jsatt/django-podcast-client">podcast client</a> and ran into an issue downloading large files. The root problem was that all of Django&#39;s <code>FileField</code> backends store the file (or file-like object) to memory then saves it to disk, and the cubieboard system I was using had limitied memry resources, resulting in &quot;out of memory&quot; errors. After much searching and hacking I finally settled on just storing the file to disk myself using <a href="http://docs.python-requests.org/en/latest/user/advanced/#body-content-workflow">requests streaming argument</a>. This allowed me to download the file in chunks and save directly to disk and then tell the Django field where I placed it, as you can see <a href="https://github.com/jsatt/django-podcast-client/blob/master/podcast_client/models.py#L131-L148">here</a>.</p>
+
+<p>Then I went to update tests. This is when a new problem presented itself. I wanted to test that proper calls were being made to store the file to disk, but I didn&#39;t want to store a file to disk during tests. Mocking never worked the way you&#39;d expect for the built-in open. I placed it on the back burner for a while until I ran into a similar issue an another project. When I finally found the solution, it was incredibly simple and incredibly nonobvious.</p>
+
+<p>Pythons has a bunch of built-in functions that are just preloaded, such as <code>open</code> for opening files, <code>print</code> for outputting to the console, <code>str</code>, <code>bool</code>, <code>dict</code>, <code>list</code>, etc. for casting or creating an object, among others. Most of these just do what they do, with no affect on the overall environment; therefore, when testing I just let them do what they do and mocking them is probably a bad idea anyway. Except for <code>open</code>, it has real world affects on the environment in that it accesses, and allows writing of, files on the disk.</p>
+
+<p>Finally, I stumbled across the <code>__builtin__</code> module. This is the magic module where all those functions actually reside, and if you can access where a function resides you can mock it out. The following should work on most Python mocking frameworks, but this is how to use PyMox to do it.</p>
+
+<pre>
+<code class="language-python">class Client(APIClient):
+...
+    def open_file(self):
+        file = open(self.path, &#39;r&#39;)
+        contents = file.read()
+        file.close()
+        return self.prepare_file(contents)
+...
+
+
+# test.py
+import __builtin__
+from StringIO import StringIO
+
+class ClientTest(TestCase):
+...
+def test_open_file(self):
+    self.mock.StubOutWithMock(__builtin__, &#39;open&#39;)
+    mock_content = StringIO(&#39;test&#39;)
+    self.mock.StubOutWithMock(mock_content, &#39;close&#39;)
+
+    open(&#39;/tmp/mypath.txt&#39;, &#39;r&#39;).AndReturn(mock_content)
+    mock_content.close()
+
+    self.mock.ReplayAll()
+    file = self.client.open_file()
+    self.mock.VerifyAll()
+    ...</code>
+</pre>
+
+<p>In this case, returning an instance of StringIO results in a file-like object allowing me to set the contents of the &quot;file&quot; being accessed directly in the test. No fixtures or creating files on the disk. This pattern works for both reads and writes.</p>
+
+<p>But the code I&#39;m testing here doesn&#39;t do all the error handling to make sure the file is closed even if there&#39;s an error during the read. Frankly, they made it possible to use <code>open</code> as a context manager so that you don&#39;t have to worry about it. So combining this new knowledge with my previous post about <a href="/blog/mocking-context-managers-in-python/">mocking context managers</a>, we can easily write cleaner code that&#39;s still testable.</p>
+
+<pre>
+<code class="language-python">class Client(APIClient):
+...
+    def write_file(self):
+        with open(self.path, &#39;wb&#39;) as f:
+            f.write(self.content)
+...
+
+# test.py
+class ClientTest(TestCase):
+...
+    def test_write_file(self):
+        self.mock.StubOutWithMock(__builtin__, &#39;open&#39;)
+        mock_file1 = self.mock.CreateMockAnything()
+        open(&#39;/tmp1/mypath.txt&#39;, &#39;wb&#39;).AndReturn(mock_file1)
+        mock_file1.__enter__().AndReturn(mock_file1)
+        mock_file1.write(&#39;this is my content&#39;)
+        mock_file1.__exit__(None, None, None)
+
+        self.mock.ReplayAll()
+        self.client.write_file()
+        self.mock.VerifyAll()
+...</code>
+</pre>
+
+<p>Since StringIO can&#39;t be used as a context manager, this pattern doesn&#39;t allow for the use of StringIO. This means you have to mock out the reads, writes and any other methods you would call on a file-like object, but I think that&#39;s a small price for being able to write cleaner, testable code.</p>
+

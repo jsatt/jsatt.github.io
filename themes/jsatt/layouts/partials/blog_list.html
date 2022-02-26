@@ -1,0 +1,63 @@
+<div class="row">
+    <article class="col-md-8">
+        {{ if eq .Kind "term" }}
+            <p>
+            {{ if eq .Data.Singular "tag" }}
+                Viewing posts tagged
+            {{ else if eq .Data.Singular "category" }}
+                Viewing posts for the category
+            {{ end }}
+            <em>{{ .Title }}</em>
+            </p>
+        {{ end }}
+
+        {{ range (.Paginator 5).Pages.ByPublishDate.Reverse }}
+        <div class="post">
+            {{- block "blog_post_list_post_title" . -}}
+                <h2><a href="{{ .Permalink }}">{{ htmlUnescape .Title }}</a></h2>
+            {{- end -}}
+
+            {{- block "blog_post_list_post_content" . -}}
+                {{ htmlUnescape .Description }}
+            {{- end -}}
+
+            {{- block "blog_post_list_post_metainfo" . -}}
+                <h6 class="post-meta">
+                    Posted by: {{ .Param "author.display_name" }}
+                    {{ $categories := (.GetTerms "categories") }}
+                    {{ if $categories }}
+                        {{ $cat_len := len $categories }}
+                        in
+                        {{ range $cat_idx, $cat_item := $categories }}
+                <a href="{{ .Permalink }}">{{ .LinkTitle }}</a>{{ if (and (gt $cat_len 1) (lt $cat_idx (sub $cat_len 1))) }}, {{ end }} 
+                        {{ end }}
+                    {{ end }}
+                    on {{ .PublishDate.Format "2006-01-02" }}
+                    {{ $tags := (.GetTerms "tags") }}
+                    {{ if $tags }}
+                    <ul class="list-inline tags">
+                        <li>Tags:</li>
+                        {{ range $tags }}
+                    <li><a href="{{ .Permalink }}">{{ .LinkTitle }}</a></li>
+                        {{ end }}
+                    </ul>
+                    {{ end }}
+                </h6>
+            {{- end -}}
+            {{- block "blog_post_list_post_links" . -}}
+            <div class="blog-list-detail">
+                <p>
+                    <a href="{{ .Permalink }}">read more</a>
+                </p>
+            </div>
+            {{- end -}}
+        </div>
+        {{ end }}
+
+        {{ template "_internal/pagination.html" . }}
+    </article>
+    <aside class="col-md-4">
+        {{ partial "social_icons" . }}
+        {{ partial "keyword_sidebar" . }}
+    </aside>
+</div>

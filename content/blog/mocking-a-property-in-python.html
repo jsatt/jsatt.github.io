@@ -1,0 +1,38 @@
+---
+
+title: "Mocking a property in Python"
+slug: mocking-a-property-in-python
+date: 2014-08-08T21:10:45+00:00
+draft: false
+categories:
+- development
+tags:
+- mocking
+- python
+- testing
+related:
+- /blog/python-catalog
+- /blog/virtualenvs-for-all
+- /blog/unit-testing-recursion-in-python
+- /blog/keeping-mro-in-mind-when-mocking-inherited-methods
+- /blog/mocking-pythons-built-in-open-function
+- /blog/mocking-context-managers-in-python
+description: "Anytime I see someone turning an instance method into a property on a Python object, I always have to step back and rethink whether it&#39;s really the right thing to do. While properties certain have valid use cases, I often see them overused and misused. This can result in code that is harder to refactor should you decide you actually do want to accept arguments as well as less straight forward to separate in unit tests."
+
+---
+
+<p>Anytime I see someone turning an instance method into a property on a Python object, I always have to step back and rethink whether it&#39;s really the right thing to do. While properties certain have valid use cases, I often see them overused and misused. This can result in code that is harder to refactor should you decide you actually do want to accept arguments as well as less straight forward to separate in unit tests.</p>
+
+<p>The way I found to deal with the latter case is pretty simple but unituitive at first. Simply stub out the property on the class, then assign the property value on the instance.</p>
+
+<pre class="language-python">
+<code># Use __class__ if you don&#39;t have the class imported
+self.mox.StubOutWithMock(self.book.__class__, &#39;reviews&#39;)
+self.book.editors = [&#39;editor 1&#39;, &#39;editor 2&#39;]
+
+# replace with a MockAnything to go deeper
+self.mock.StubOutWithMock(Company, &#39;employees&#39;)
+Company.employees = self.mock.CreateMockAnything()
+company.employees.are_executives().AndReturn([&#39;CEO&#39;, &#39;COO&#39;, &#39;CIO&#39;])
+campaign3.reviews.are_developers().AndReturn([&#39;Jim&#39;, &#39;John&#39;, &#39;Joey&#39;])</code></pre>
+

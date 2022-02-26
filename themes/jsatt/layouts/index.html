@@ -1,0 +1,6 @@
+{{ define "body_id" }}page_blog_list{{ end }}
+{{ define "main" }}
+{{ with .Site.GetPage "blog/" }}
+{{ partial "blog_list" . }}
+{{ end }}
+{{ end }}

@@ -1,0 +1,19 @@
+<header>
+    <nav>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <ul class="nav navbar-nav">
+                        {{- $currentPage := . }}
+                        {{- range .Site.Menus.main }}
+                        <li id="menu-link-{{ .Page.Params.slug }}" {{ if $currentPage.IsMenuCurrent "main" . }} class="active"{{ end }}><a href="{{ absURL .URL }}">{{ .Name }}</a></li>
+                        {{ end -}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="title"><a href="/">{{ $.Site.Title }}</a></div>
+    <div class="tagline">{{ $.Site.Params.tagline }}</div>
+</header>
+

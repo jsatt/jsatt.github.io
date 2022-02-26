@@ -1,0 +1,9 @@
+{{ if .Site.Taxonomies.tags }}
+<div class="keywords">
+    {{ range .Site.Taxonomies.tags.ByCount  }}
+    <div class="keyword">
+        <a href="{{ .Page.Permalink }}">#{{ .Term }}</a>
+    </div>
+    {{ end }}
+</div>
+{{ end }}

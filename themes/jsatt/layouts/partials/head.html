@@ -1,0 +1,13 @@
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+    <title>{{ .Title }}</title>
+    <!--link rel="shortcut icon" href="{{ relURL "img/favicon.ico" }}"-->
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ (path.Split ((.GetPage "/").OutputFormats.Get "RSS").Permalink).Dir }}">
+    <link rel="alternate" type="application/atom+xml" title="Atom" href="{{ (path.Split ((.GetPage "/").OutputFormats.Get "ATOM").Permalink).Dir }}">
+    <link rel="stylesheet" href="{{ relURL "/static/css/bootstrap.min.css" }}">
+    <link rel="stylesheet" href="{{ relURL "/static/css/font-awesome.min.css" }}">
+    <link rel="stylesheet" href="{{ relURL "/static/css/prism.css" }}">
+    <link rel="stylesheet" href="{{ relURL "/static/css/main.css" }}">
+</head>

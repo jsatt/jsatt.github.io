@@ -1,0 +1,44 @@
+{{- $pctx := . -}}
+{{- if .IsHome -}}{{ $pctx = .Site }}{{- end -}}
+{{- $pages := slice -}}
+{{- if or $.IsHome $.IsSection -}}
+{{- $pages = $pctx.RegularPages -}}
+{{- else -}}
+{{- $pages = $pctx.Pages -}}
+{{- end -}}
+{{- $limit := .Site.Config.Services.RSS.Limit -}}
+{{- if ge $limit 1 -}}
+{{- $pages = $pages | first $limit -}}
+{{- end -}}
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\"?>" | safeHTML }}
+<feed xml:lang="en" xmlns:atom="http://www.w3.org/2005/Atom">
+    <title>{{ if eq  .Title  .Site.Title }}{{ .Site.Title }}{{ else }}{{ with .Title }}{{.}} on {{ end }}{{ .Site.Title }}{{ end }}</title>
+    <link rel="alternate" href="{{ absURL "/blog/" }}" />
+    {{- with .OutputFormats.Get "ATOM" }}
+    <link rel="self" href="{{ (path.Split .Permalink).Dir }}" />
+    {{- end }}
+    <id>{{ absURL "/blog/" }}</id>
+    {{- if not .Date.IsZero }}
+    <updated>{{ .Lastmod.Format "2006-01-02T15:04:05-07:00" | safeHTML }}</updated>
+    {{- end }}
+    <subtitle>{{ .Param "tagline" }}</subtitle>
+    {{- range .Site.Taxonomies.categories.ByCount }}
+    <category term="{{ .Term }}" />
+    {{- end }}
+    {{- range $pages }}
+    <entry>
+        <title>{{ .Title }}</title>
+        <link href="{{ .Permalink }}" rel="alternate"/>
+        <published>{{ .Date.Format "2006-01-02T15:04:05-07:00" }}</published>
+        <updated>{{ .Lastmod.Format "2006-01-02T15:04:05-07:00" }}</updated>
+        <author>
+            <name>{{ .Param "author.display_name" }}</name>
+        </author>
+        <id>{{ .Permalink }}</id>
+        <summary type="html">{{ .Content | html }}</summary>
+        {{- range (.GetTerms "categories") }}
+        <category term="development"/>
+        {{- end }}
+    </entry>
+    {{- end }}
+</feed>

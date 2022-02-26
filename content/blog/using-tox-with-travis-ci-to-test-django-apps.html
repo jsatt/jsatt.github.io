@@ -1,0 +1,92 @@
+---
+
+title: "Using Tox with Travis CI to Test Django Apps"
+slug: using-tox-with-travis-ci-to-test-django-apps
+date: 2014-03-09T01:18:20+00:00
+draft: false
+categories:
+- development
+tags:
+- django
+- testing
+- tox
+- travis ci
+- python
+description: "Being a fan of good testing, I&#39;m always trying to find ways to improve testing on various projects. Travis CI and Coveralls are really nice ways to set up continuous integration for your open-source projects. A couple months ago I finally started hearing grumblings about tox and how everyone was it using for their Python test automation. Every time I&#39;d try to wrap my head around it, something always eluded me, so this week I finally decided to dive in head first and see if I could get to the bottom of it and how it could improve my current integration setup."
+
+---
+
+<p>Being a fan of good testing, I&#39;m always trying to find ways to improve testing on various projects. <a href="https://travis-ci.org/">Travis CI</a> and <a href="https://coveralls.io/">Coveralls</a> are really nice ways to set up continuous integration for your open-source projects. A couple months ago I finally started hearing grumblings about <a href="http://testrun.org/tox/latest/index.html">tox</a> and how everyone was it using for their Python test automation. Every time I&#39;d try to wrap my head around it, something always eluded me, so this week I finally decided to dive in head first and see if I could get to the bottom of it and how it could improve my current integration setup.</p>
+
+<h2>Headless Django Environments</h2>
+
+<p>Most of my open-source Python projects have been developed from the beginning to be installable modules for use with tools like pip. With Django apps, this tends to be a little more difficult as Django development environments generally assumes you have a project that contains a lot boilerplate (manage.py, project/settings.py, project/urls.py), but some of this stuff is just clutter in an installable package. After trying several patterns, I found the one used by <a href="http://jamessocol.com/">James Socol</a> on several projects, using <a href="http://docs.fabfile.org/en/1.8/">fabric</a> to wrap my development enviroment and easily provide some of the common commands we use manage.py for, but without all the clutter of a full Django project. I&#39;ve also created a repository that&#39;s intended to be used as a Django <a href="https://docs.djangoproject.com/en/dev/ref/django-admin/#startproject-projectname-destination">project template</a>, to help with setting out a project like this. It even includes some of the setup I&#39;m about to discuss. You can get that template <a href="https://github.com/jsatt/django-installable-plugin-template">over at Github</a>.</p>
+
+<h2>Preparing tox</h2>
+
+<p>Start by installing tox with a simple <code>pip install tox</code>. Then create the tox.ini file in the base of your project. The first section you care about is configuring tox itself.</p>
+
+<pre><code class="language-none">
+[tox]
+envlist = django15, django16</code></pre>
+
+<p>The <code>envlist</code> directive tells tox which environments to run by default when calling it from the CLI. Tox comes with a few built-in environments (py26, py27, py31, py33, etc.) for testing different Python versions, but in my case I care about testing different Django versions, so I&#39;ll be building my own environments.</p>
+
+<pre><code class="language-none">[testenv]
+commands = django-admin.py test
+setenv =
+    DJANGO_SETTINGS_MODULE=test_app.settings
+    PYTHONPATH={toxinidir}</code></pre>
+
+<p><code>testenv</code> is the set of default environment settings that all named environments will inherit from. Here I&#39;m telling it that the default command I&#39;m going to use is <code>django-admin.py test</code> to run tests. And setup environment variables that are usually handled by <code>manage.py</code>. Tox also allows for substituting variables, in this case <code>{toxinidir}</code> is simply the path of the directory which contains the <code>tox.ini</code> file. It also allows for doing substitutions based on lookups within the ini file. By defining a custom section, we can define settings that can be reused and extended within our environments.</p>
+
+<pre><code class="language-none">[base]
+deps =
+    mox
+    nose
+    django-nose</code></pre>
+
+<p>Here I&#39;m defining some dependencies that I&#39;m going to add to in each environment. In my case, I prefer Nose and Mox to their standard library counterparts.</p>
+<pre><code class="language-none">[testenv:django15]
+deps =
+    django&gt;=1.5, &lt;1.6
+    {[base]deps}
+
+[testenv:django16]
+deps =
+    django&gt;=1.6, &lt;1.7
+    {[base]deps}</code></pre>
+
+<p>This creates two new test environments, named django15 and django16, and adds the dependency to install the proper version of Django, 1.5 and 1.6 respectively. It also uses the section lookup to append the deps from the base section we defined above. Now, when you return to the CLI and run tox, you should see it setup virtualenvs for each environment and run your tests under them. That&#39;s all it take to get it running. Anyone can now clone your repository and simply run tox to confirm that tests are passing. This is particularly useful if they intend to contribute back to the project.</p>
+
+<h3>Adding Coverage</h3>
+
+<p>Now, as I mentioned before, I want to also use Coveralls to show coverage stats as well. To do that I just need to define another environment.</p>
+
+<pre><code class="language-none">[testenv:coverage]
+commands =
+    coverage run --branch --omit={envdir}/*,test_app/*.py,*/migrations/*.py {envbindir}/django-admin.py test
+    coveralls
+deps =
+    coverage
+    coveralls
+    {[testenv:django16]deps}</code></pre>
+
+<p>This time I&#39;m running <code>coverage run</code> with branch coverage, ignoring migrations and my test app and running the <code>django-admin.py</code> in the enviroments bin directory, followed by the coveralls reporting script. We also have a couple of additional dependencies to add to the django16 deps.</p>
+
+<h2>Running Tox on Travis</h2>
+
+<p>With tox configured to handle the details, Travis just needs to know about the different environments. Here&#39;s what the <code>.travis.yaml</code> looks like.</p>
+
+<pre><code class="language-yaml">language: python
+install:
+  - pip install tox 
+script:
+  - tox
+env:
+  - TOXENV=django15
+  - TOXENV=django16
+  - TOXENV=coverage</code></pre>
+
+<p>This tells Travis to install tox and to run the <code>tox</code> command. Adding the <code>TOXENV</code> environment variable makes it easy to specify which testenv to run.Travis runs it&#39;s tasks based on the build matrix of environment variables and language versions, allowing us to run each testenv asynchronously and reporting the results for each version separately.</p>
+

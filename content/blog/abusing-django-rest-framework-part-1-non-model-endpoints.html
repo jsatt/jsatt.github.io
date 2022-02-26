@@ -1,0 +1,51 @@
+---
+
+title: "Abusing Django Rest Framework Part 1: Non-Model Endpoints"
+slug: abusing-django-rest-framework-part-1-non-model-endpoints
+date: 2014-01-29T18:32:43+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- django
+- django rest framework
+- hacks
+related:
+- /blog/abusing-django-rest-framework-part-4-object-level-field-exclusion
+- /blog/abusing-django-rest-framework-part-3-object-level-read-only-fields
+- /blog/abusing-django-rest-framework-part-2-non-rate-based-throttling
+description: "When working with Django Rest Framwork a few months back, there were a few road blocks that we ran into. Rest Framwork is awesome with most models for providing a simple CRUD API, in any (or multiple) serializations, with authentication and permissions. Sometimes, however, things aren&#39;t so simple. Things get ugly. Framworks get abused."
+
+---
+
+<p>When working with <a href="http://www.django-rest-framework.org/" target="_blank">Django Rest Framwork</a> a few months back, there were a few road blocks that we ran into. Rest Framwork is awesome with most models for providing a simple CRUD API, in any (or multiple) serializations, with authentication and permissions. Sometimes, however, things aren&#39;t so simple. Things get ugly. Framworks get abused.</p>
+
+<p>This is the first of a few posts looking at some of the ways Rest Framwork can be beaten into submission. Some of them may be the way the framework intended them to be implement, but non-obvious, while others were never intended, are probably bad ideas, and should be avoided at all costs (except when the needs of the business require it, of course).</p>
+
+<h2>Creating Endpoints to Trigger Non-model Processes</h2>
+
+<p>Let&#39;s start out easy. As I mentioned Rest Framework is great at working with models, but it can also be easily used for things other than retrieving and saving models. Say for instance you have an email form on your site for sharing a post. Using AJAX posting of those fields makes for a better experience for your user and keeps them browsing the page longer.</p>
+
+<p>While it&#39;s not exactly clear, the <code>APIView</code> allows for this. Most of the documentation for <code>APIView</code> is spent doing model retrievals that are made easier when you start using <code>GenericAPIView</code> and those that inherit from it. However, using the dispatch methods (<code>post</code>, <code>get</code>, <code>delete</code>, <code>patch</code>, <code>put</code>, etc.), just like a Django class-based view, our example above becomes pretty easy.</p>
+
+<pre>
+<code class="language-python">from rest_framework import views
+from rest_framework.response import Response
+
+class ShareView(views.APIView):
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+        email = request.DATA.get(&#39;email&#39;, None)
+        url = request.DATA.get(&#39;url&#39;, None)
+        if email and url:
+            share_url(email, url)
+            return Response({&quot;success&quot;: True})
+        else:
+            return Response({&quot;success&quot;: False})</code></pre>
+
+<p>In these dispatch methods you can easily access the deserialized posted data (via <code>request.DATA</code>), run your custom code (<code>share_url()</code> in this case) and return a serialized response (passing your data to <code>Response</code>). If you&#39;re arbitrary code execution applies to a model object, maybe a method call, but doesn&#39;t including retrieving or updating that model, simply inherit from the <code>GenericAPIView</code> instead the <code>APIView</code> and use the <code>get_object</code> method of the view.</p>
+
+<p>The one caveat when using <code>APIView</code> is to watch what permissions are applied to the view. Since it is not associated with a model, any permission that expects a model object to be available, like the <code>DjangoModelPermission</code> that is applied by default, will fail, so you should be explicit about permissions.</p>
+

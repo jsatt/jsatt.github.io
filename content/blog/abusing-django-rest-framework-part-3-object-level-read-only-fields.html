@@ -1,0 +1,43 @@
+---
+
+title: "Abusing Django Rest Framework Part 3: Object-level read-only fields"
+slug: abusing-django-rest-framework-part-3-object-level-read-only-fields
+date: 2014-03-26T16:25:04+00:00
+draft: false
+categories:
+- development
+tags:
+- django
+- django rest framework
+- hacks
+- python
+related:
+- /blog/abusing-django-rest-framework-part-4-object-level-field-exclusion
+- /blog/abusing-django-rest-framework-part-2-non-rate-based-throttling
+- /blog/abusing-django-rest-framework-part-1-non-model-endpoints
+description: "DRF has tools to control access in a few ways. Serializers make it easy to select what fields can be accessed and whether or not they are read-only. Permissions are great for restricting access to objects at all or even making certain objects read-only. But there are also cases where you might only want to allow access to a field on a specific object but leave that field restricted on other objects, or vice-versa."
+
+---
+
+<p>DRF has tools to control access in a few ways. Serializers make it easy to select what fields can be accessed and whether or not they are read-only. Permissions are great for restricting access to objects at all or even making certain objects read-only. But there are also cases where you might only want to allow access to a field on a specific object but leave that field restricted on other objects, or vice-versa.</p>
+
+<p>In our case, we had an endpoint for modifying users, which has a field to dictate whether the user is an account admin. Our view already uses permissions to verify that the request user is allow to modify these items at all, but we wanted to make sure the user couldn&#39;t accidentally remove their own admin access but still be able to change other fields on this endpoint.</p>
+
+<p>Whenever a <code>Serializer</code> is instantiated, the <code>get_fields</code> method is called to look at the attributes and decide what fields to include and instantiate them. As part of the serialzer instantiation the view also passes the request, view and <code>format_kwarg</code> as context to the serializer which is attached to the instance. This means we can use the request or view, or objects attached to them in to change attributes of the fields, in our case making one of them readonly.</p>
+
+<pre><code class="language-python">class SampleSerializer(serializers.ModelSerializer):
+    ...
+
+    def get_fields(self, *args, **kwargs):
+        fields = super(SampleSerializer, self).get_fields(*args, **kwargs)
+        request = self.context.get(&#39;request&#39;, None)
+        view = self.context.get(&#39;view&#39;, None)
+
+        if (request and view and getattr(view, &#39;object&#39;, None) and
+                request.user == view.object.user):
+            fields[&#39;is_admin&#39;].read_only = True
+
+        return fields</code></pre>
+
+<p>The one issue with this method is that you can not nest this serializer and have this change work. Whenever a Serializer is nested on to another, the parent gets one instance of this child at the time that the server process starts, which gets reused for all future instances of said parent. Due to lots of complicated handling on DRF&#39;s part, that I&#39;ll leave to you to read up on, everything just works the way you expect most of the time. However, we are trying to access the request and view objects that clearly don&#39;t exist at the time the server process starts.</p>
+

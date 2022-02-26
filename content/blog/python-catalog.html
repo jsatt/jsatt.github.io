@@ -1,0 +1,143 @@
+---
+
+title: "Python Catalog Data Structures"
+slug: python-catalog
+date: 2017-11-10T15:07:49.344000+00:00
+draft: false
+categories:
+- development
+tags:
+- python
+- data structures
+- open source
+- packages
+related:
+- /blog/virtualenvs-for-all
+- /blog/unit-testing-recursion-in-python
+- /blog/mocking-a-property-in-python
+- /blog/mocking-context-managers-in-python
+description: "I recently realized I have several open-source projects I&#39;m a maintainer or owner of which I&#39;ve never really discussed on this site or on social media. Some of these projects have been pretty specific and tied to the other projects I was working on at the time, but several do have the potential for wider general use. I figured now was a good time to start talking about some of these projects and the problems they are intended to solve."
+
+---
+
+<p>I recently realized I have several open-source projects I&#39;m a maintainer or owner of which I&#39;ve never really discussed on this site or on social media. Some of these projects have been pretty specific and tied to the other projects I was working on at the time, but several do have the potential for wider general use. I figured now was a good time to start talking about some of these projects and the problems they are intended to solve.</p>
+
+<h2>Python Catalogs</h2>
+
+<p>This is one of the more general use case projects I maintain. And while the examples and original impetus are for choices in Django, Catalogs could be used for just about any Python project that needs complex mappings. It&#39;s a data structure that&#39;s very simple to define and very flexible to use.</p>
+
+<p>You can install Catalog yourself via Pypi, <code>pip install pycatalog</code>. As of the latest release it supports Python 2.7 and 3.3+. And you can always submit issues, feature requests and PRs over on <a href="https://github.com/jsatt/python-catalog">Github</a>.</p>
+
+<h3>The Choice Definition Problem</h3>
+
+<p>One of the niceties that Django brings to the table for both models and forms, introduced in the some of the earliest tutorials, is allowing you to define choices. It&#39;s a simple pattern that&#39;s not limited to Django, Python or web development, but is weaved through much of Django&#39;s out-of-the-box magic. It makes entry easier for users by providing their options to choose from and easier for your code to validate the input.</p>
+
+<p>It starts out easy enough: provide the database value and label for each choice item.</p>
+
+<pre class="language-python">
+<code>class SomeModel(models.Model):
+    status = models.IntegerField(choices=((1, &#39;Open&#39;), (2, &#39;Closed&#39;)), default=1)
+</code></pre>
+
+<p>Simple, but right off the bat this example exposes one of the first problems. Anytime you want to actually reference the value, <code>default=1</code> in this case, you have to reference the value that&#39;s going into the database. Hard coding these values can make it difficult to refactor as your project grows and also make code checking for these values crypt and unclear. Take, for example, the simplest of checks <code>if sm.status == 1</code>.</p>
+
+<p>A better, more common pattern is to define these values as constants.</p>
+
+<pre class="language-python">
+<code>class SomeModel(models.Model):
+    OPEN = 1
+    CLOSED = 2
+    STATUS_CHOICES = (
+        (OPEN, &#39;Open&#39;),
+        (CLOSED, &#39;Closed&#39;),
+    )
+    status = models.IntegerField(choices=STATUS_CHOICES, default=OPEN)</code></pre>
+
+<p>That&#39;s much cleaner and the code references are clearer too, <code>if sm.status == SomeModel.OPEN</code>.</p>
+
+<p>In most cases this is going to be exactly what your project needs and you&#39;re done. Good work.</p>
+
+<h3>More Complex Cases</h3>
+
+<p>But what if data from this model syncs with a legacy remote API which has it&#39;s own archaic idea of how these values should be presented? Not too hard, we can add a mapping for that. Well, actually, two mappings because we need to communicate both directions. No problem.</p>
+
+<pre class="language-python">
+<code>class SomeModel(models.Model):
+    OPEN = 1
+    CLOSED = 2
+    STATUS_CHOICES = (
+        (OPEN, &#39;Open&#39;),
+        (CLOSED, &#39;Closed&#39;),
+    )
+    API_STATUS_MAP = {
+        &#39;op&#39;: OPEN,
+        &#39;cl&#39;: CLOSED,
+    }
+    REVERSE_API_STATUS_MAP = {v: k for k, v in API_STATUS_MAP.items()}
+    status = models.IntegerField(choices=STATUS_CHOICES, default=OPEN)</code></pre>
+
+<p>And sometimes we&#39;ll want to go directly from the API value to the user-readable label. Maybe use a property or method for that? That might obscure the fact that the value is based on the status field, sometimes that&#39;s good, but maybe not this time.</p>
+
+<p>Also, we want to use a specific template path for a re-used block that changes based on the choices, add another mapping.</p>
+
+<p>Oh, and maybe a different parser class to abstracts the different parsing details based on the choice, add another mapping.</p>
+
+<p>This is where things are starting to go haywire. More mappings, more properties and methods, more mess.</p>
+
+<h3>Enter Python Catalog</h3>
+
+<p>This is the snowball I was trying to stop when I started working on Catalog a couple years ago. We had a complex project that required a complicated web of mappings and lookup patterns. So I set out to find a data structure that could handle this case with a couple of goals in mind:</p>
+
+<ul>
+	<li>Simple definition signature</li>
+	<li>Developers could define their own attributes for the choices, to fit their use case</li>
+	<li>Attributes could store values of arbitrary types</li>
+	<li>Simple process for mapping items down to an iterable, containing just the attribute values needed at that point</li>
+	<li>Easily lookup items by any attribute and access any attribute</li>
+</ul>
+
+<p>Starting with the simple signature, Catalog works similar to <a href="https://docs.python.org/3/library/enum.html">Python 3&#39;s Enum</a>.</p>
+
+<pre class="language-python">
+<code>class STATUSES(Catalog):
+    open = 1
+    closed = 2
+
+STATUSES.open.value # =&gt;1
+</code></pre>
+
+<p>But that doesn&#39;t even handle our simplest case of a database value and a label. We can do better. Let&#39;s define more attributes.</p>
+
+<pre class="language-python">
+<code>class SomeModel(models.Model):
+    class STATUSES(Catalog):
+        _attrs = value, label, api_value
+        open = 1, &#39;Open&#39;, &#39;op&#39;
+        closed = 2, &#39;Closed&#39;, &#39;cl&#39;</code></pre>
+
+<p>Oh, then there&#39;s the template paths and parser classes.</p>
+
+<pre class="language-python">
+<code>class SomeModel(models.Model):
+    class STATUSES(Catalog):
+        _attrs = value, label, api_value, template, parser
+        open = 1, &#39;Open&#39;, &#39;op&#39;, &#39;some_path/open.html&#39;, OpenParser
+        closed = 2, &#39;Closed&#39;, &#39;cl&#39;, &#39;other_path/closed.html&#39;, ClosedParser</code></pre>
+
+<p>Now let&#39;s add those choices to the field. There&#39;s an easy method for that.</p>
+
+<pre class="language-python">
+<code>    status = models.IntegerField(choices=STATUSES._zip(&#39;value&#39;, &#39;label&#39;), default=STATUSES.open.value)</code></pre>
+
+<p>Now I want to get the user-readable label, but I&#39;ve got the remote api value, or parser based database value.</p>
+
+<pre class="language-python">
+<code>SomeModel.STATUSES(&#39;op&#39;, &#39;api_value&#39;).label  # =&gt; &#39;Opened&#39;
+SomeModel.STATUSES(1, &#39;value&#39;).parser  # =&gt; OpenParser
+</code></pre>
+
+<h2>Conclusion</h2>
+
+<p>So there you have it. It&#39;s by no means perfect, but after using it in production environments for over a year now, we still find it to be much cleaner and easier to use then some of the other patterns out there.</p>
+
+<p>While the access API is always just as simple, the definitions do get clunkier as you add more attributes to the items. It was never meant to handle dozens of attributes per item and you have bigger problems if that&#39;s your use case, but since the attribute values for each item are really just presented as tuples, you can easily throw in parentheses and wrap across lines to help with readability.</p>
