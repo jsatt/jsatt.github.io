@@ -30,7 +30,7 @@
         </div>
     </article>
     <aside class="col-md-4">
-        {{ partial "social_icons" }}
+        {{ partial "social_icons" .Site }}
         {{ if .Params.related }}
         <div id="related-posts">
             {{ range $idx, $url := .Params.related }}
