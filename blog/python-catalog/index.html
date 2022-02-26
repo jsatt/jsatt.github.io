@@ -1,0 +1,252 @@
+<!doctype html><html lang=en-us><head>
+<meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
+<meta name=viewport content="width=device-width">
+<title>Python Catalog Data Structures</title>
+<link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/>
+<link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/>
+<link rel=stylesheet href=../../static/css/bootstrap.min.css>
+<link rel=stylesheet href=../../static/css/font-awesome.min.css>
+<link rel=stylesheet href=../../static/css/prism.css>
+<link rel=stylesheet href=../../static/css/main.css>
+</head>
+<body id=page_blog_post><header>
+<nav>
+<div class=container>
+<div class=row>
+<div class=col-md-12>
+<ul class="nav navbar-nav">
+<li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li>
+<li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li>
+</ul>
+</div>
+</div>
+</div>
+</nav>
+<div class=title><a href=../../>Jeremy Satterfield</a></div>
+<div class=tagline>Coding, Making and Tulsa Life</div>
+</header>
+<section id=content>
+<div class=container>
+<div class=row>
+<article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting>
+<h1 class=headline itemprop=headline>Python Catalog Data Structures</h1>
+<h6 class=post-meta>
+Posted by:
+<span itemscope itemprop=author itemtype=http://schema.org/Person>
+<span itemprop=name>Jeremy Satterfield</span>
+</span>
+in
+<a itemprop=articleSection href=https://jsatt.com/categories/development/>development</a>
+on <span itemprop=datePublished>2017-11-10</span>
+<ul class="list-inline tags">
+<li>Tags:</li>
+<li><a href=https://jsatt.com/tags/python/>python</a></li><li><a href=https://jsatt.com/tags/data-structures/>data structures</a></li><li><a href=https://jsatt.com/tags/open-source/>open source</a></li><li><a href=https://jsatt.com/tags/packages/>packages</a></li>
+</ul>
+</h6>
+<div class=post itemprop=articleBody>
+<p>I recently realized I have several open-source projects I'm a maintainer or owner of which I've never really discussed on this site or on social media. Some of these projects have been pretty specific and tied to the other projects I was working on at the time, but several do have the potential for wider general use. I figured now was a good time to start talking about some of these projects and the problems they are intended to solve.</p>
+<h2>Python Catalogs</h2>
+<p>This is one of the more general use case projects I maintain. And while the examples and original impetus are for choices in Django, Catalogs could be used for just about any Python project that needs complex mappings. It's a data structure that's very simple to define and very flexible to use.</p>
+<p>You can install Catalog yourself via Pypi, <code>pip install pycatalog</code>. As of the latest release it supports Python 2.7 and 3.3+. And you can always submit issues, feature requests and PRs over on <a href=https://github.com/jsatt/python-catalog>Github</a>.</p>
+<h3>The Choice Definition Problem</h3>
+<p>One of the niceties that Django brings to the table for both models and forms, introduced in the some of the earliest tutorials, is allowing you to define choices. It's a simple pattern that's not limited to Django, Python or web development, but is weaved through much of Django's out-of-the-box magic. It makes entry easier for users by providing their options to choose from and easier for your code to validate the input.</p>
+<p>It starts out easy enough: provide the database value and label for each choice item.</p>
+<pre class=language-python>
+<code>class SomeModel(models.Model):
+    status = models.IntegerField(choices=((1, &#39;Open&#39;), (2, &#39;Closed&#39;)), default=1)
+</code></pre>
+<p>Simple, but right off the bat this example exposes one of the first problems. Anytime you want to actually reference the value, <code>default=1</code> in this case, you have to reference the value that's going into the database. Hard coding these values can make it difficult to refactor as your project grows and also make code checking for these values crypt and unclear. Take, for example, the simplest of checks <code>if sm.status == 1</code>.</p>
+<p>A better, more common pattern is to define these values as constants.</p>
+<pre class=language-python>
+<code>class SomeModel(models.Model):
+    OPEN = 1
+    CLOSED = 2
+    STATUS_CHOICES = (
+        (OPEN, &#39;Open&#39;),
+        (CLOSED, &#39;Closed&#39;),
+    )
+    status = models.IntegerField(choices=STATUS_CHOICES, default=OPEN)</code></pre>
+<p>That's much cleaner and the code references are clearer too, <code>if sm.status == SomeModel.OPEN</code>.</p>
+<p>In most cases this is going to be exactly what your project needs and you're done. Good work.</p>
+<h3>More Complex Cases</h3>
+<p>But what if data from this model syncs with a legacy remote API which has it's own archaic idea of how these values should be presented? Not too hard, we can add a mapping for that. Well, actually, two mappings because we need to communicate both directions. No problem.</p>
+<pre class=language-python>
+<code>class SomeModel(models.Model):
+    OPEN = 1
+    CLOSED = 2
+    STATUS_CHOICES = (
+        (OPEN, &#39;Open&#39;),
+        (CLOSED, &#39;Closed&#39;),
+    )
+    API_STATUS_MAP = {
+        &#39;op&#39;: OPEN,
+        &#39;cl&#39;: CLOSED,
+    }
+    REVERSE_API_STATUS_MAP = {v: k for k, v in API_STATUS_MAP.items()}
+    status = models.IntegerField(choices=STATUS_CHOICES, default=OPEN)</code></pre>
+<p>And sometimes we'll want to go directly from the API value to the user-readable label. Maybe use a property or method for that? That might obscure the fact that the value is based on the status field, sometimes that's good, but maybe not this time.</p>
+<p>Also, we want to use a specific template path for a re-used block that changes based on the choices, add another mapping.</p>
+<p>Oh, and maybe a different parser class to abstracts the different parsing details based on the choice, add another mapping.</p>
+<p>This is where things are starting to go haywire. More mappings, more properties and methods, more mess.</p>
+<h3>Enter Python Catalog</h3>
+<p>This is the snowball I was trying to stop when I started working on Catalog a couple years ago. We had a complex project that required a complicated web of mappings and lookup patterns. So I set out to find a data structure that could handle this case with a couple of goals in mind:</p>
+<ul>
+<li>Simple definition signature</li>
+<li>Developers could define their own attributes for the choices, to fit their use case</li>
+<li>Attributes could store values of arbitrary types</li>
+<li>Simple process for mapping items down to an iterable, containing just the attribute values needed at that point</li>
+<li>Easily lookup items by any attribute and access any attribute</li>
+</ul>
+<p>Starting with the simple signature, Catalog works similar to <a href=https://docs.python.org/3/library/enum.html>Python 3's Enum</a>.</p>
+<pre class=language-python>
+<code>class STATUSES(Catalog):
+    open = 1
+    closed = 2
+
+STATUSES.open.value # =&gt;1
+</code></pre>
+<p>But that doesn't even handle our simplest case of a database value and a label. We can do better. Let's define more attributes.</p>
+<pre class=language-python>
+<code>class SomeModel(models.Model):
+    class STATUSES(Catalog):
+        _attrs = value, label, api_value
+        open = 1, &#39;Open&#39;, &#39;op&#39;
+        closed = 2, &#39;Closed&#39;, &#39;cl&#39;</code></pre>
+<p>Oh, then there's the template paths and parser classes.</p>
+<pre class=language-python>
+<code>class SomeModel(models.Model):
+    class STATUSES(Catalog):
+        _attrs = value, label, api_value, template, parser
+        open = 1, &#39;Open&#39;, &#39;op&#39;, &#39;some_path/open.html&#39;, OpenParser
+        closed = 2, &#39;Closed&#39;, &#39;cl&#39;, &#39;other_path/closed.html&#39;, ClosedParser</code></pre>
+<p>Now let's add those choices to the field. There's an easy method for that.</p>
+<pre class=language-python>
+<code>    status = models.IntegerField(choices=STATUSES._zip(&#39;value&#39;, &#39;label&#39;), default=STATUSES.open.value)</code></pre>
+<p>Now I want to get the user-readable label, but I've got the remote api value, or parser based database value.</p>
+<pre class=language-python>
+<code>SomeModel.STATUSES(&#39;op&#39;, &#39;api_value&#39;).label  # =&gt; &#39;Opened&#39;
+SomeModel.STATUSES(1, &#39;value&#39;).parser  # =&gt; OpenParser
+</code></pre>
+<h2>Conclusion</h2>
+<p>So there you have it. It's by no means perfect, but after using it in production environments for over a year now, we still find it to be much cleaner and easier to use then some of the other patterns out there.</p>
+<p>While the access API is always just as simple, the definitions do get clunkier as you add more attributes to the items. It was never meant to handle dozens of attributes per item and you have bigger problems if that's your use case, but since the attribute values for each item are really just presented as tuples, you can easily throw in parentheses and wrap across lines to help with readability.</p>
+</div>
+</article>
+<aside class=col-md-4>
+<nav class=social-icons>
+<a href=https://github.com/jsatt rel=me target=_blank><i class="fa fa-github-square"></i></a>
+<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa fa-facebook-square"></i></a>
+<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa fa-twitter-square"></i></a>
+<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa fa-linkedin-square"></i></a>
+<a href=mailto:jsatt@jsatt.com><i class="fa fa-envelope"></i></a>
+<a href target=_blank><i class="fa fa-rss-square"></i></a>
+</nav>
+<div id=related-posts>
+<div class=related-post>
+<a href=https://jsatt.com/blog/virtualenvs-for-all/>Manage All the Languages Using Python Virtualenv</a>
+<div class=timesince>2017-10-28</div>
+</div>
+<div class=related-post>
+<a href=https://jsatt.com/blog/unit-testing-recursion-in-python/>Unit Testing Recursion in Python</a>
+<div class=timesince>2014-12-11</div>
+</div>
+<div class=related-post>
+<a href=https://jsatt.com/blog/mocking-a-property-in-python/>Mocking a property in Python</a>
+<div class=timesince>2014-08-08</div>
+</div>
+<div class=related-post>
+<a href=https://jsatt.com/blog/mocking-context-managers-in-python/>Mocking Context Managers in Python</a>
+<div class=timesince>2014-02-28</div>
+</div>
+</div>
+<div class=keywords>
+<div class=keyword>
+<a href=https://jsatt.com/tags/python/>#python</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/testing/>#testing</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/django/>#django</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/hacks/>#hacks</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/mocking/>#mocking</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/celery/>#celery</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/data-structures/>#data-structures</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/docker/>#docker</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/go/>#go</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/linux/>#linux</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/node/>#node</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/nose/>#nose</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/open-source/>#open-source</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/packages/>#packages</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/ruby/>#ruby</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/rust/>#rust</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/tox/>#tox</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</section><footer>
+<div class=container>
+<div class=row>
+<div class=col-md-12>
+<div class=nav-footer>
+<ul class=list-unstyled>
+<li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li>
+<li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</footer>
+<script src=../../static/js/jquery.min.js></script>
+<script src=../../static/js/prism.js></script>
+<script src=../../static/js/bootstrap.min.js></script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html><html lang=en-us><head>
+<meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
+<meta name=viewport content="width=device-width">
+<title>Abusing Django Rest Framework Part 3: Object-level read-only fields</title>
+<link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/>
+<link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/>
+<link rel=stylesheet href=../../static/css/bootstrap.min.css>
+<link rel=stylesheet href=../../static/css/font-awesome.min.css>
+<link rel=stylesheet href=../../static/css/prism.css>
+<link rel=stylesheet href=../../static/css/main.css>
+</head>
+<body id=page_blog_post><header>
+<nav>
+<div class=container>
+<div class=row>
+<div class=col-md-12>
+<ul class="nav navbar-nav">
+<li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li>
+<li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li>
+</ul>
+</div>
+</div>
+</div>
+</nav>
+<div class=title><a href=../../>Jeremy Satterfield</a></div>
+<div class=tagline>Coding, Making and Tulsa Life</div>
+</header>
+<section id=content>
+<div class=container>
+<div class=row>
+<article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting>
+<h1 class=headline itemprop=headline>Abusing Django Rest Framework Part 3: Object-level read-only fields</h1>
+<h6 class=post-meta>
+Posted by:
+<span itemscope itemprop=author itemtype=http://schema.org/Person>
+<span itemprop=name>Jeremy Satterfield</span>
+</span>
+in
+<a itemprop=articleSection href=https://jsatt.com/categories/development/>development</a>
+on <span itemprop=datePublished>2014-03-26</span>
+<ul class="list-inline tags">
+<li>Tags:</li>
+<li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/django-rest-framework/>django rest framework</a></li><li><a href=https://jsatt.com/tags/hacks/>hacks</a></li><li><a href=https://jsatt.com/tags/python/>python</a></li>
+</ul>
+</h6>
+<div class=post itemprop=articleBody>
+<p>DRF has tools to control access in a few ways. Serializers make it easy to select what fields can be accessed and whether or not they are read-only. Permissions are great for restricting access to objects at all or even making certain objects read-only. But there are also cases where you might only want to allow access to a field on a specific object but leave that field restricted on other objects, or vice-versa.</p>
+<p>In our case, we had an endpoint for modifying users, which has a field to dictate whether the user is an account admin. Our view already uses permissions to verify that the request user is allow to modify these items at all, but we wanted to make sure the user couldn't accidentally remove their own admin access but still be able to change other fields on this endpoint.</p>
+<p>Whenever a <code>Serializer</code> is instantiated, the <code>get_fields</code> method is called to look at the attributes and decide what fields to include and instantiate them. As part of the serialzer instantiation the view also passes the request, view and <code>format_kwarg</code> as context to the serializer which is attached to the instance. This means we can use the request or view, or objects attached to them in to change attributes of the fields, in our case making one of them readonly.</p>
+<pre><code class=language-python>class SampleSerializer(serializers.ModelSerializer):
+    ...
+
+    def get_fields(self, *args, **kwargs):
+        fields = super(SampleSerializer, self).get_fields(*args, **kwargs)
+        request = self.context.get(&#39;request&#39;, None)
+        view = self.context.get(&#39;view&#39;, None)
+
+        if (request and view and getattr(view, &#39;object&#39;, None) and
+                request.user == view.object.user):
+            fields[&#39;is_admin&#39;].read_only = True
+
+        return fields</code></pre>
+<p>The one issue with this method is that you can not nest this serializer and have this change work. Whenever a Serializer is nested on to another, the parent gets one instance of this child at the time that the server process starts, which gets reused for all future instances of said parent. Due to lots of complicated handling on DRF's part, that I'll leave to you to read up on, everything just works the way you expect most of the time. However, we are trying to access the request and view objects that clearly don't exist at the time the server process starts.</p>
+</div>
+</article>
+<aside class=col-md-4>
+<nav class=social-icons>
+<a href=https://github.com/jsatt rel=me target=_blank><i class="fa fa-github-square"></i></a>
+<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa fa-facebook-square"></i></a>
+<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa fa-twitter-square"></i></a>
+<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa fa-linkedin-square"></i></a>
+<a href=mailto:jsatt@jsatt.com><i class="fa fa-envelope"></i></a>
+<a href target=_blank><i class="fa fa-rss-square"></i></a>
+</nav>
+<div id=related-posts>
+<div class=related-post>
+<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-4-object-level-field-exclusion/>Abusing Django Rest Framework Part 4: Object-level field exclusion</a>
+<div class=timesince>2014-03-27</div>
+</div>
+<div class=related-post>
+<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-2-non-rate-based-throttling/>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</a>
+<div class=timesince>2014-02-19</div>
+</div>
+<div class=related-post>
+<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-1-non-model-endpoints/>Abusing Django Rest Framework Part 1: Non-Model Endpoints</a>
+<div class=timesince>2014-01-29</div>
+</div>
+</div>
+<div class=keywords>
+<div class=keyword>
+<a href=https://jsatt.com/tags/python/>#python</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/testing/>#testing</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/django/>#django</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/hacks/>#hacks</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/mocking/>#mocking</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/celery/>#celery</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/data-structures/>#data-structures</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/docker/>#docker</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/go/>#go</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/linux/>#linux</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/node/>#node</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/nose/>#nose</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/open-source/>#open-source</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/packages/>#packages</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/ruby/>#ruby</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/rust/>#rust</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/tox/>#tox</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a>
+</div>
+<div class=keyword>
+<a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</section><footer>
+<div class=container>
+<div class=row>
+<div class=col-md-12>
+<div class=nav-footer>
+<ul class=list-unstyled>
+<li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li>
+<li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</footer>
+<script src=../../static/js/jquery.min.js></script>
+<script src=../../static/js/prism.js></script>
+<script src=../../static/js/bootstrap.min.js></script>
+</body>
+</html>
