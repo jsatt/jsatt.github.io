@@ -1,72 +1,18 @@
-<!doctype html><html lang=en-us><head>
-<meta charset=utf-8>
-<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
-<meta name=viewport content="width=device-width">
-<title>Using Tox with Travis CI to Test Django Apps</title>
-<link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/>
-<link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/>
-<link rel=stylesheet href=../../static/css/bootstrap.min.css>
-<link rel=stylesheet href=../../static/css/font-awesome.min.css>
-<link rel=stylesheet href=../../static/css/prism.css>
-<link rel=stylesheet href=../../static/css/main.css>
-</head>
-<body id=page_blog_post><header>
-<nav>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<ul class="nav navbar-nav">
-<li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li>
-<li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li>
-</ul>
-</div>
-</div>
-</div>
-</nav>
-<div class=title><a href=../../>Jeremy Satterfield</a></div>
-<div class=tagline>Coding, Making and Tulsa Life</div>
-</header>
-<section id=content>
-<div class=container>
-<div class=row>
-<article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting>
-<h1 class=headline itemprop=headline>Using Tox with Travis CI to Test Django Apps</h1>
-<h6 class=post-meta>
-Posted by:
-<span itemscope itemprop=author itemtype=http://schema.org/Person>
-<span itemprop=name>Jeremy Satterfield</span>
-</span>
+<!doctype html><html lang=en-us><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width"><title>Using Tox with Travis CI to Test Django Apps</title><link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/><link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/><link rel=stylesheet href=../../static/css/bootstrap.min.css><link rel=stylesheet href=../../static/css/fa-regular.min.css><link rel=stylesheet href=../../static/css/fa-solid.min.css><link rel=stylesheet href=../../static/css/fa-brands.min.css><link rel=stylesheet href=../../static/css/prism.css><link rel=stylesheet href=../../static/css/main.css></head><body id=page_blog_post><header><nav><div class=container><div class=row><div class=col-md-12><ul class="nav navbar-nav"><li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li><li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li></ul></div></div></div></nav><div class=title><a href=../../>Jeremy Satterfield</a></div><div class=tagline>Coding, Making and Tulsa Life</div></header><section id=content><div class=container><div class=row><article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting><h1 class=headline itemprop=headline>Using Tox with Travis CI to Test Django Apps</h1><h6 class=post-meta>Posted by:
+<span itemscope itemprop=author itemtype=http://schema.org/Person><span itemprop=name>Jeremy Satterfield</span></span>
 in
 <a itemprop=articleSection href=https://jsatt.com/categories/development/>development</a>
-on <span itemprop=datePublished>2014-03-09</span>
-<ul class="list-inline tags">
-<li>Tags:</li>
-<li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/testing/>testing</a></li><li><a href=https://jsatt.com/tags/tox/>tox</a></li><li><a href=https://jsatt.com/tags/travis-ci/>travis ci</a></li><li><a href=https://jsatt.com/tags/python/>python</a></li>
-</ul>
-</h6>
-<div class=post itemprop=articleBody>
-<p>Being a fan of good testing, I'm always trying to find ways to improve testing on various projects. <a href=https://travis-ci.org/>Travis CI</a> and <a href=https://coveralls.io/>Coveralls</a> are really nice ways to set up continuous integration for your open-source projects. A couple months ago I finally started hearing grumblings about <a href=http://testrun.org/tox/latest/index.html>tox</a> and how everyone was it using for their Python test automation. Every time I'd try to wrap my head around it, something always eluded me, so this week I finally decided to dive in head first and see if I could get to the bottom of it and how it could improve my current integration setup.</p>
-<h2>Headless Django Environments</h2>
-<p>Most of my open-source Python projects have been developed from the beginning to be installable modules for use with tools like pip. With Django apps, this tends to be a little more difficult as Django development environments generally assumes you have a project that contains a lot boilerplate (manage.py, project/settings.py, project/urls.py), but some of this stuff is just clutter in an installable package. After trying several patterns, I found the one used by <a href=http://jamessocol.com/>James Socol</a> on several projects, using <a href=http://docs.fabfile.org/en/1.8/>fabric</a> to wrap my development enviroment and easily provide some of the common commands we use manage.py for, but without all the clutter of a full Django project. I've also created a repository that's intended to be used as a Django <a href=https://docs.djangoproject.com/en/dev/ref/django-admin/#startproject-projectname-destination>project template</a>, to help with setting out a project like this. It even includes some of the setup I'm about to discuss. You can get that template <a href=https://github.com/jsatt/django-installable-plugin-template>over at Github</a>.</p>
-<h2>Preparing tox</h2>
-<p>Start by installing tox with a simple <code>pip install tox</code>. Then create the tox.ini file in the base of your project. The first section you care about is configuring tox itself.</p>
-<pre><code class=language-none>
+on <span itemprop=datePublished>2014-03-09</span><ul class="list-inline tags"><li>Tags:</li><li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/testing/>testing</a></li><li><a href=https://jsatt.com/tags/tox/>tox</a></li><li><a href=https://jsatt.com/tags/travis-ci/>travis ci</a></li><li><a href=https://jsatt.com/tags/python/>python</a></li></ul></h6><div class=post itemprop=articleBody><p>Being a fan of good testing, I'm always trying to find ways to improve testing on various projects. <a href=https://travis-ci.org/>Travis CI</a> and <a href=https://coveralls.io/>Coveralls</a> are really nice ways to set up continuous integration for your open-source projects. A couple months ago I finally started hearing grumblings about <a href=http://testrun.org/tox/latest/index.html>tox</a> and how everyone was it using for their Python test automation. Every time I'd try to wrap my head around it, something always eluded me, so this week I finally decided to dive in head first and see if I could get to the bottom of it and how it could improve my current integration setup.</p><h2>Headless Django Environments</h2><p>Most of my open-source Python projects have been developed from the beginning to be installable modules for use with tools like pip. With Django apps, this tends to be a little more difficult as Django development environments generally assumes you have a project that contains a lot boilerplate (manage.py, project/settings.py, project/urls.py), but some of this stuff is just clutter in an installable package. After trying several patterns, I found the one used by <a href=http://jamessocol.com/>James Socol</a> on several projects, using <a href=http://docs.fabfile.org/en/1.8/>fabric</a> to wrap my development enviroment and easily provide some of the common commands we use manage.py for, but without all the clutter of a full Django project. I've also created a repository that's intended to be used as a Django <a href=https://docs.djangoproject.com/en/dev/ref/django-admin/#startproject-projectname-destination>project template</a>, to help with setting out a project like this. It even includes some of the setup I'm about to discuss. You can get that template <a href=https://github.com/jsatt/django-installable-plugin-template>over at Github</a>.</p><h2>Preparing tox</h2><p>Start by installing tox with a simple <code>pip install tox</code>. Then create the tox.ini file in the base of your project. The first section you care about is configuring tox itself.</p><pre><code class=language-none>
 [tox]
-envlist = django15, django16</code></pre>
-<p>The <code>envlist</code> directive tells tox which environments to run by default when calling it from the CLI. Tox comes with a few built-in environments (py26, py27, py31, py33, etc.) for testing different Python versions, but in my case I care about testing different Django versions, so I'll be building my own environments.</p>
-<pre><code class=language-none>[testenv]
+envlist = django15, django16</code></pre><p>The <code>envlist</code> directive tells tox which environments to run by default when calling it from the CLI. Tox comes with a few built-in environments (py26, py27, py31, py33, etc.) for testing different Python versions, but in my case I care about testing different Django versions, so I'll be building my own environments.</p><pre><code class=language-none>[testenv]
 commands = django-admin.py test
 setenv =
     DJANGO_SETTINGS_MODULE=test_app.settings
-    PYTHONPATH={toxinidir}</code></pre>
-<p><code>testenv</code> is the set of default environment settings that all named environments will inherit from. Here I'm telling it that the default command I'm going to use is <code>django-admin.py test</code> to run tests. And setup environment variables that are usually handled by <code>manage.py</code>. Tox also allows for substituting variables, in this case <code>{toxinidir}</code> is simply the path of the directory which contains the <code>tox.ini</code> file. It also allows for doing substitutions based on lookups within the ini file. By defining a custom section, we can define settings that can be reused and extended within our environments.</p>
-<pre><code class=language-none>[base]
+    PYTHONPATH={toxinidir}</code></pre><p><code>testenv</code> is the set of default environment settings that all named environments will inherit from. Here I'm telling it that the default command I'm going to use is <code>django-admin.py test</code> to run tests. And setup environment variables that are usually handled by <code>manage.py</code>. Tox also allows for substituting variables, in this case <code>{toxinidir}</code> is simply the path of the directory which contains the <code>tox.ini</code> file. It also allows for doing substitutions based on lookups within the ini file. By defining a custom section, we can define settings that can be reused and extended within our environments.</p><pre><code class=language-none>[base]
 deps =
     mox
     nose
-    django-nose</code></pre>
-<p>Here I'm defining some dependencies that I'm going to add to in each environment. In my case, I prefer Nose and Mox to their standard library counterparts.</p>
-<pre><code class=language-none>[testenv:django15]
+    django-nose</code></pre><p>Here I'm defining some dependencies that I'm going to add to in each environment. In my case, I prefer Nose and Mox to their standard library counterparts.</p><pre><code class=language-none>[testenv:django15]
 deps =
     django&gt;=1.5, &lt;1.6
     {[base]deps}
@@ -74,22 +20,14 @@ deps =
 [testenv:django16]
 deps =
     django&gt;=1.6, &lt;1.7
-    {[base]deps}</code></pre>
-<p>This creates two new test environments, named django15 and django16, and adds the dependency to install the proper version of Django, 1.5 and 1.6 respectively. It also uses the section lookup to append the deps from the base section we defined above. Now, when you return to the CLI and run tox, you should see it setup virtualenvs for each environment and run your tests under them. That's all it take to get it running. Anyone can now clone your repository and simply run tox to confirm that tests are passing. This is particularly useful if they intend to contribute back to the project.</p>
-<h3>Adding Coverage</h3>
-<p>Now, as I mentioned before, I want to also use Coveralls to show coverage stats as well. To do that I just need to define another environment.</p>
-<pre><code class=language-none>[testenv:coverage]
+    {[base]deps}</code></pre><p>This creates two new test environments, named django15 and django16, and adds the dependency to install the proper version of Django, 1.5 and 1.6 respectively. It also uses the section lookup to append the deps from the base section we defined above. Now, when you return to the CLI and run tox, you should see it setup virtualenvs for each environment and run your tests under them. That's all it take to get it running. Anyone can now clone your repository and simply run tox to confirm that tests are passing. This is particularly useful if they intend to contribute back to the project.</p><h3>Adding Coverage</h3><p>Now, as I mentioned before, I want to also use Coveralls to show coverage stats as well. To do that I just need to define another environment.</p><pre><code class=language-none>[testenv:coverage]
 commands =
     coverage run --branch --omit={envdir}/*,test_app/*.py,*/migrations/*.py {envbindir}/django-admin.py test
     coveralls
 deps =
     coverage
     coveralls
-    {[testenv:django16]deps}</code></pre>
-<p>This time I'm running <code>coverage run</code> with branch coverage, ignoring migrations and my test app and running the <code>django-admin.py</code> in the enviroments bin directory, followed by the coveralls reporting script. We also have a couple of additional dependencies to add to the django16 deps.</p>
-<h2>Running Tox on Travis</h2>
-<p>With tox configured to handle the details, Travis just needs to know about the different environments. Here's what the <code>.travis.yaml</code> looks like.</p>
-<pre><code class=language-yaml>language: python
+    {[testenv:django16]deps}</code></pre><p>This time I'm running <code>coverage run</code> with branch coverage, ignoring migrations and my test app and running the <code>django-admin.py</code> in the enviroments bin directory, followed by the coveralls reporting script. We also have a couple of additional dependencies to add to the django16 deps.</p><h2>Running Tox on Travis</h2><p>With tox configured to handle the details, Travis just needs to know about the different environments. Here's what the <code>.travis.yaml</code> looks like.</p><pre><code class=language-yaml>language: python
 install:
   - pip install tox 
 script:
@@ -97,106 +35,11 @@ script:
 env:
   - TOXENV=django15
   - TOXENV=django16
-  - TOXENV=coverage</code></pre>
-<p>This tells Travis to install tox and to run the <code>tox</code> command. Adding the <code>TOXENV</code> environment variable makes it easy to specify which testenv to run.Travis runs it's tasks based on the build matrix of environment variables and language versions, allowing us to run each testenv asynchronously and reporting the results for each version separately.</p>
-</div>
-</article>
-<aside class=col-md-4>
-<nav class=social-icons>
-<a href=https://github.com/jsatt rel=me target=_blank><i class="fa fa-github-square"></i></a>
-<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa fa-facebook-square"></i></a>
-<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa fa-twitter-square"></i></a>
-<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa fa-linkedin-square"></i></a>
-<a href=mailto:jsatt@jsatt.com><i class="fa fa-envelope"></i></a>
-<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa fa-rss-square"></i></a>
-</nav>
-<div class=keywords>
-<div class=keyword>
-<a href=https://jsatt.com/tags/python/>#python</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/testing/>#testing</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django/>#django</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/hacks/>#hacks</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/mocking/>#mocking</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/celery/>#celery</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/data-structures/>#data-structures</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/docker/>#docker</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/go/>#go</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/linux/>#linux</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/node/>#node</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/nose/>#nose</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/open-source/>#open-source</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/packages/>#packages</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/ruby/>#ruby</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/rust/>#rust</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/tox/>#tox</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a>
-</div>
-</div>
-</aside>
-</div>
-</div>
-</section><footer>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<div class=nav-footer>
-<ul class=list-unstyled>
-<li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li>
-<li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-</footer>
-<script src=../../static/js/jquery.min.js></script>
+  - TOXENV=coverage</code></pre><p>This tells Travis to install tox and to run the <code>tox</code> command. Adding the <code>TOXENV</code> environment variable makes it easy to specify which testenv to run.Travis runs it's tasks based on the build matrix of environment variables and language versions, allowing us to run each testenv asynchronously and reporting the results for each version separately.</p></div></article><aside class=col-md-4><nav class=social-icons><a href=https://github.com/jsatt rel=me target=_blank><i class="fa-brands fa-github"></i></a>
+<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa-brands fa-facebook"></i></a>
+<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa-brands fa-twitter"></i></a>
+<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa-brands fa-linkedin"></i></a>
+<a href=mailto:jsatt@jsatt.com><i class="fa-solid fa-envelope"></i></a>
+<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa-solid fa-square-rss"></i></a></nav><div class=keywords><div class=keyword><a href=https://jsatt.com/tags/python/>#python</a></div><div class=keyword><a href=https://jsatt.com/tags/testing/>#testing</a></div><div class=keyword><a href=https://jsatt.com/tags/django/>#django</a></div><div class=keyword><a href=https://jsatt.com/tags/hacks/>#hacks</a></div><div class=keyword><a href=https://jsatt.com/tags/mocking/>#mocking</a></div><div class=keyword><a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a></div><div class=keyword><a href=https://jsatt.com/tags/celery/>#celery</a></div><div class=keyword><a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a></div><div class=keyword><a href=https://jsatt.com/tags/data-structures/>#data-structures</a></div><div class=keyword><a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a></div><div class=keyword><a href=https://jsatt.com/tags/docker/>#docker</a></div><div class=keyword><a href=https://jsatt.com/tags/go/>#go</a></div><div class=keyword><a href=https://jsatt.com/tags/linux/>#linux</a></div><div class=keyword><a href=https://jsatt.com/tags/node/>#node</a></div><div class=keyword><a href=https://jsatt.com/tags/nose/>#nose</a></div><div class=keyword><a href=https://jsatt.com/tags/open-source/>#open-source</a></div><div class=keyword><a href=https://jsatt.com/tags/packages/>#packages</a></div><div class=keyword><a href=https://jsatt.com/tags/ruby/>#ruby</a></div><div class=keyword><a href=https://jsatt.com/tags/rust/>#rust</a></div><div class=keyword><a href=https://jsatt.com/tags/tox/>#tox</a></div><div class=keyword><a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a></div><div class=keyword><a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a></div></div></aside></div></div></section><footer><div class=container><div class=row><div class=col-md-12><div class=nav-footer><ul class=list-unstyled><li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li><li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li></ul></div></div></div></div></footer><script src=../../static/js/jquery.min.js></script>
 <script src=../../static/js/prism.js></script>
-<script src=../../static/js/bootstrap.min.js></script>
-</body>
-</html>
+<script src=../../static/js/bootstrap.min.js></script></body></html>

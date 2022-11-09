@@ -1,56 +1,8 @@
-<!doctype html><html lang=en-us><head>
-<meta charset=utf-8>
-<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
-<meta name=viewport content="width=device-width">
-<title>Abusing Django Rest Framework Part 1: Non-Model Endpoints</title>
-<link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/>
-<link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/>
-<link rel=stylesheet href=../../static/css/bootstrap.min.css>
-<link rel=stylesheet href=../../static/css/font-awesome.min.css>
-<link rel=stylesheet href=../../static/css/prism.css>
-<link rel=stylesheet href=../../static/css/main.css>
-</head>
-<body id=page_blog_post><header>
-<nav>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<ul class="nav navbar-nav">
-<li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li>
-<li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li>
-</ul>
-</div>
-</div>
-</div>
-</nav>
-<div class=title><a href=../../>Jeremy Satterfield</a></div>
-<div class=tagline>Coding, Making and Tulsa Life</div>
-</header>
-<section id=content>
-<div class=container>
-<div class=row>
-<article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting>
-<h1 class=headline itemprop=headline>Abusing Django Rest Framework Part 1: Non-Model Endpoints</h1>
-<h6 class=post-meta>
-Posted by:
-<span itemscope itemprop=author itemtype=http://schema.org/Person>
-<span itemprop=name>Jeremy Satterfield</span>
-</span>
+<!doctype html><html lang=en-us><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width"><title>Abusing Django Rest Framework Part 1: Non-Model Endpoints</title><link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/><link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/><link rel=stylesheet href=../../static/css/bootstrap.min.css><link rel=stylesheet href=../../static/css/fa-regular.min.css><link rel=stylesheet href=../../static/css/fa-solid.min.css><link rel=stylesheet href=../../static/css/fa-brands.min.css><link rel=stylesheet href=../../static/css/prism.css><link rel=stylesheet href=../../static/css/main.css></head><body id=page_blog_post><header><nav><div class=container><div class=row><div class=col-md-12><ul class="nav navbar-nav"><li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li><li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li></ul></div></div></div></nav><div class=title><a href=../../>Jeremy Satterfield</a></div><div class=tagline>Coding, Making and Tulsa Life</div></header><section id=content><div class=container><div class=row><article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting><h1 class=headline itemprop=headline>Abusing Django Rest Framework Part 1: Non-Model Endpoints</h1><h6 class=post-meta>Posted by:
+<span itemscope itemprop=author itemtype=http://schema.org/Person><span itemprop=name>Jeremy Satterfield</span></span>
 in
 <a itemprop=articleSection href=https://jsatt.com/categories/development/>development</a>
-on <span itemprop=datePublished>2014-01-29</span>
-<ul class="list-inline tags">
-<li>Tags:</li>
-<li><a href=https://jsatt.com/tags/python/>python</a></li><li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/django-rest-framework/>django rest framework</a></li><li><a href=https://jsatt.com/tags/hacks/>hacks</a></li>
-</ul>
-</h6>
-<div class=post itemprop=articleBody>
-<p>When working with <a href=http://www.django-rest-framework.org/ target=_blank>Django Rest Framwork</a> a few months back, there were a few road blocks that we ran into. Rest Framwork is awesome with most models for providing a simple CRUD API, in any (or multiple) serializations, with authentication and permissions. Sometimes, however, things aren't so simple. Things get ugly. Framworks get abused.</p>
-<p>This is the first of a few posts looking at some of the ways Rest Framwork can be beaten into submission. Some of them may be the way the framework intended them to be implement, but non-obvious, while others were never intended, are probably bad ideas, and should be avoided at all costs (except when the needs of the business require it, of course).</p>
-<h2>Creating Endpoints to Trigger Non-model Processes</h2>
-<p>Let's start out easy. As I mentioned Rest Framework is great at working with models, but it can also be easily used for things other than retrieving and saving models. Say for instance you have an email form on your site for sharing a post. Using AJAX posting of those fields makes for a better experience for your user and keeps them browsing the page longer.</p>
-<p>While it's not exactly clear, the <code>APIView</code> allows for this. Most of the documentation for <code>APIView</code> is spent doing model retrievals that are made easier when you start using <code>GenericAPIView</code> and those that inherit from it. However, using the dispatch methods (<code>post</code>, <code>get</code>, <code>delete</code>, <code>patch</code>, <code>put</code>, etc.), just like a Django class-based view, our example above becomes pretty easy.</p>
-<pre>
+on <span itemprop=datePublished>2014-01-29</span><ul class="list-inline tags"><li>Tags:</li><li><a href=https://jsatt.com/tags/python/>python</a></li><li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/django-rest-framework/>django rest framework</a></li><li><a href=https://jsatt.com/tags/hacks/>hacks</a></li></ul></h6><div class=post itemprop=articleBody><p>When working with <a href=http://www.django-rest-framework.org/ target=_blank>Django Rest Framwork</a> a few months back, there were a few road blocks that we ran into. Rest Framwork is awesome with most models for providing a simple CRUD API, in any (or multiple) serializations, with authentication and permissions. Sometimes, however, things aren't so simple. Things get ugly. Framworks get abused.</p><p>This is the first of a few posts looking at some of the ways Rest Framwork can be beaten into submission. Some of them may be the way the framework intended them to be implement, but non-obvious, while others were never intended, are probably bad ideas, and should be avoided at all costs (except when the needs of the business require it, of course).</p><h2>Creating Endpoints to Trigger Non-model Processes</h2><p>Let's start out easy. As I mentioned Rest Framework is great at working with models, but it can also be easily used for things other than retrieving and saving models. Say for instance you have an email form on your site for sharing a post. Using AJAX posting of those fields makes for a better experience for your user and keeps them browsing the page longer.</p><p>While it's not exactly clear, the <code>APIView</code> allows for this. Most of the documentation for <code>APIView</code> is spent doing model retrievals that are made easier when you start using <code>GenericAPIView</code> and those that inherit from it. However, using the dispatch methods (<code>post</code>, <code>get</code>, <code>delete</code>, <code>patch</code>, <code>put</code>, etc.), just like a Django class-based view, our example above becomes pretty easy.</p><pre>
 <code class=language-python>from rest_framework import views
 from rest_framework.response import Response
 
@@ -64,121 +16,11 @@ class ShareView(views.APIView):
             share_url(email, url)
             return Response({&quot;success&quot;: True})
         else:
-            return Response({&quot;success&quot;: False})</code></pre>
-<p>In these dispatch methods you can easily access the deserialized posted data (via <code>request.DATA</code>), run your custom code (<code>share_url()</code> in this case) and return a serialized response (passing your data to <code>Response</code>). If you're arbitrary code execution applies to a model object, maybe a method call, but doesn't including retrieving or updating that model, simply inherit from the <code>GenericAPIView</code> instead the <code>APIView</code> and use the <code>get_object</code> method of the view.</p>
-<p>The one caveat when using <code>APIView</code> is to watch what permissions are applied to the view. Since it is not associated with a model, any permission that expects a model object to be available, like the <code>DjangoModelPermission</code> that is applied by default, will fail, so you should be explicit about permissions.</p>
-</div>
-</article>
-<aside class=col-md-4>
-<nav class=social-icons>
-<a href=https://github.com/jsatt rel=me target=_blank><i class="fa fa-github-square"></i></a>
-<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa fa-facebook-square"></i></a>
-<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa fa-twitter-square"></i></a>
-<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa fa-linkedin-square"></i></a>
-<a href=mailto:jsatt@jsatt.com><i class="fa fa-envelope"></i></a>
-<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa fa-rss-square"></i></a>
-</nav>
-<div id=related-posts>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-4-object-level-field-exclusion/>Abusing Django Rest Framework Part 4: Object-level field exclusion</a>
-<div class=timesince>2014-03-27</div>
-</div>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-3-object-level-read-only-fields/>Abusing Django Rest Framework Part 3: Object-level read-only fields</a>
-<div class=timesince>2014-03-26</div>
-</div>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-2-non-rate-based-throttling/>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</a>
-<div class=timesince>2014-02-19</div>
-</div>
-</div>
-<div class=keywords>
-<div class=keyword>
-<a href=https://jsatt.com/tags/python/>#python</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/testing/>#testing</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django/>#django</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/hacks/>#hacks</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/mocking/>#mocking</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/celery/>#celery</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/data-structures/>#data-structures</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/docker/>#docker</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/go/>#go</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/linux/>#linux</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/node/>#node</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/nose/>#nose</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/open-source/>#open-source</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/packages/>#packages</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/ruby/>#ruby</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/rust/>#rust</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/tox/>#tox</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a>
-</div>
-</div>
-</aside>
-</div>
-</div>
-</section><footer>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<div class=nav-footer>
-<ul class=list-unstyled>
-<li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li>
-<li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-</footer>
-<script src=../../static/js/jquery.min.js></script>
+            return Response({&quot;success&quot;: False})</code></pre><p>In these dispatch methods you can easily access the deserialized posted data (via <code>request.DATA</code>), run your custom code (<code>share_url()</code> in this case) and return a serialized response (passing your data to <code>Response</code>). If you're arbitrary code execution applies to a model object, maybe a method call, but doesn't including retrieving or updating that model, simply inherit from the <code>GenericAPIView</code> instead the <code>APIView</code> and use the <code>get_object</code> method of the view.</p><p>The one caveat when using <code>APIView</code> is to watch what permissions are applied to the view. Since it is not associated with a model, any permission that expects a model object to be available, like the <code>DjangoModelPermission</code> that is applied by default, will fail, so you should be explicit about permissions.</p></div></article><aside class=col-md-4><nav class=social-icons><a href=https://github.com/jsatt rel=me target=_blank><i class="fa-brands fa-github"></i></a>
+<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa-brands fa-facebook"></i></a>
+<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa-brands fa-twitter"></i></a>
+<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa-brands fa-linkedin"></i></a>
+<a href=mailto:jsatt@jsatt.com><i class="fa-solid fa-envelope"></i></a>
+<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa-solid fa-square-rss"></i></a></nav><div id=related-posts><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-4-object-level-field-exclusion/>Abusing Django Rest Framework Part 4: Object-level field exclusion</a><div class=timesince>2014-03-27</div></div><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-3-object-level-read-only-fields/>Abusing Django Rest Framework Part 3: Object-level read-only fields</a><div class=timesince>2014-03-26</div></div><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-2-non-rate-based-throttling/>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</a><div class=timesince>2014-02-19</div></div></div><div class=keywords><div class=keyword><a href=https://jsatt.com/tags/python/>#python</a></div><div class=keyword><a href=https://jsatt.com/tags/testing/>#testing</a></div><div class=keyword><a href=https://jsatt.com/tags/django/>#django</a></div><div class=keyword><a href=https://jsatt.com/tags/hacks/>#hacks</a></div><div class=keyword><a href=https://jsatt.com/tags/mocking/>#mocking</a></div><div class=keyword><a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a></div><div class=keyword><a href=https://jsatt.com/tags/celery/>#celery</a></div><div class=keyword><a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a></div><div class=keyword><a href=https://jsatt.com/tags/data-structures/>#data-structures</a></div><div class=keyword><a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a></div><div class=keyword><a href=https://jsatt.com/tags/docker/>#docker</a></div><div class=keyword><a href=https://jsatt.com/tags/go/>#go</a></div><div class=keyword><a href=https://jsatt.com/tags/linux/>#linux</a></div><div class=keyword><a href=https://jsatt.com/tags/node/>#node</a></div><div class=keyword><a href=https://jsatt.com/tags/nose/>#nose</a></div><div class=keyword><a href=https://jsatt.com/tags/open-source/>#open-source</a></div><div class=keyword><a href=https://jsatt.com/tags/packages/>#packages</a></div><div class=keyword><a href=https://jsatt.com/tags/ruby/>#ruby</a></div><div class=keyword><a href=https://jsatt.com/tags/rust/>#rust</a></div><div class=keyword><a href=https://jsatt.com/tags/tox/>#tox</a></div><div class=keyword><a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a></div><div class=keyword><a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a></div></div></aside></div></div></section><footer><div class=container><div class=row><div class=col-md-12><div class=nav-footer><ul class=list-unstyled><li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li><li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li></ul></div></div></div></div></footer><script src=../../static/js/jquery.min.js></script>
 <script src=../../static/js/prism.js></script>
-<script src=../../static/js/bootstrap.min.js></script>
-</body>
-</html>
+<script src=../../static/js/bootstrap.min.js></script></body></html>

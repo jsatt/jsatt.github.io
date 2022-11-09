@@ -1,54 +1,8 @@
-<!doctype html><html lang=en-us><head>
-<meta charset=utf-8>
-<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
-<meta name=viewport content="width=device-width">
-<title>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</title>
-<link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/>
-<link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/>
-<link rel=stylesheet href=../../static/css/bootstrap.min.css>
-<link rel=stylesheet href=../../static/css/font-awesome.min.css>
-<link rel=stylesheet href=../../static/css/prism.css>
-<link rel=stylesheet href=../../static/css/main.css>
-</head>
-<body id=page_blog_post><header>
-<nav>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<ul class="nav navbar-nav">
-<li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li>
-<li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li>
-</ul>
-</div>
-</div>
-</div>
-</nav>
-<div class=title><a href=../../>Jeremy Satterfield</a></div>
-<div class=tagline>Coding, Making and Tulsa Life</div>
-</header>
-<section id=content>
-<div class=container>
-<div class=row>
-<article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting>
-<h1 class=headline itemprop=headline>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</h1>
-<h6 class=post-meta>
-Posted by:
-<span itemscope itemprop=author itemtype=http://schema.org/Person>
-<span itemprop=name>Jeremy Satterfield</span>
-</span>
+<!doctype html><html lang=en-us><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width"><title>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</title><link rel=alternate type=application/rss+xml title=RSS href=https://jsatt.com/blog/feeds/rss/><link rel=alternate type=application/atom+xml title=Atom href=https://jsatt.com/blog/feeds/atom/><link rel=stylesheet href=../../static/css/bootstrap.min.css><link rel=stylesheet href=../../static/css/fa-regular.min.css><link rel=stylesheet href=../../static/css/fa-solid.min.css><link rel=stylesheet href=../../static/css/fa-brands.min.css><link rel=stylesheet href=../../static/css/prism.css><link rel=stylesheet href=../../static/css/main.css></head><body id=page_blog_post><header><nav><div class=container><div class=row><div class=col-md-12><ul class="nav navbar-nav"><li id=menu-link-blog><a href=https://jsatt.com/blog/>Blog</a></li><li id=menu-link-about><a href=https://jsatt.com/about/>About</a></li></ul></div></div></div></nav><div class=title><a href=../../>Jeremy Satterfield</a></div><div class=tagline>Coding, Making and Tulsa Life</div></header><section id=content><div class=container><div class=row><article class=col-md-8 itemscope itemtype=http://schema.org/BlogPosting><h1 class=headline itemprop=headline>Abusing Django Rest Framework Part 2: Non-rate-based Throttling</h1><h6 class=post-meta>Posted by:
+<span itemscope itemprop=author itemtype=http://schema.org/Person><span itemprop=name>Jeremy Satterfield</span></span>
 in
 <a itemprop=articleSection href=https://jsatt.com/categories/development/>development</a>
-on <span itemprop=datePublished>2014-02-19</span>
-<ul class="list-inline tags">
-<li>Tags:</li>
-<li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/django-rest-framework/>django rest framework</a></li><li><a href=https://jsatt.com/tags/hacks/>hacks</a></li><li><a href=https://jsatt.com/tags/python/>python</a></li>
-</ul>
-</h6>
-<div class=post itemprop=articleBody>
-<p>Anyone running an API that can be reached by the outside world should most definitely be concerned that someone might pummel their server by making a massive amount of requests to that one endpoint that requires a bunch of on-the-fly calculations. Enter Django Rest Framework's throttling. It allows you to easily configure the framework to stop allowing requests from a user once they've made so many requests in a period of time. Whether you're concerned about requests over a sustained period of time or in short bursts, rate limiting with throttles will handle it.</p>
-<p>However, there are times you might need to limit based on something less consistent than number of calls per minute or day. One example we we ran into was clients submitting requests for a process that requires a lot of human work to complete, and the possibility that a large number of these requests might mean that the client doesn't actually understand the real purpose of the feature, or an indicator of a bigger problem for that client. If you can limit these clients to a certain number of outstanding requests at any given time, this allows for the time for our client contacts to process the appropriate requests or contact them if the requests are inappropriate.</p>
-<p>While the throttles provided by Rest Framework are all about rate limiting, writing a custom throttle to do this is pretty simple.</p>
-<pre><code class=language-python>### throttles.py
+on <span itemprop=datePublished>2014-02-19</span><ul class="list-inline tags"><li>Tags:</li><li><a href=https://jsatt.com/tags/django/>django</a></li><li><a href=https://jsatt.com/tags/django-rest-framework/>django rest framework</a></li><li><a href=https://jsatt.com/tags/hacks/>hacks</a></li><li><a href=https://jsatt.com/tags/python/>python</a></li></ul></h6><div class=post itemprop=articleBody><p>Anyone running an API that can be reached by the outside world should most definitely be concerned that someone might pummel their server by making a massive amount of requests to that one endpoint that requires a bunch of on-the-fly calculations. Enter Django Rest Framework's throttling. It allows you to easily configure the framework to stop allowing requests from a user once they've made so many requests in a period of time. Whether you're concerned about requests over a sustained period of time or in short bursts, rate limiting with throttles will handle it.</p><p>However, there are times you might need to limit based on something less consistent than number of calls per minute or day. One example we we ran into was clients submitting requests for a process that requires a lot of human work to complete, and the possibility that a large number of these requests might mean that the client doesn't actually understand the real purpose of the feature, or an indicator of a bigger problem for that client. If you can limit these clients to a certain number of outstanding requests at any given time, this allows for the time for our client contacts to process the appropriate requests or contact them if the requests are inappropriate.</p><p>While the throttles provided by Rest Framework are all about rate limiting, writing a custom throttle to do this is pretty simple.</p><pre><code class=language-python>### throttles.py
 from django.db.models import Count
 from rest_framework.throttling import BaseThrottle
 from rest_framework.exceptions import Throttled
@@ -70,120 +24,11 @@ class InspectionThrottle(BaseThrottle):
 ###views.py
 class InspectionCreateView(CreateAPIView):
     model = Inspection
-    throttle_classes  = InspectionThrottle</code></pre>
-<p>By simply defining an <code>allow_request</code> method you are free to use whatever logic you want to throttle requests, so long as you return <code>True</code> to allow the request and raise the <code>Throttled</code> exception to deny the request. <code>Throttled</code> also accepts a kwarg of wait which will set the <code>X-Throttle-Wait-Second</code> header for notifying the client how long to wait before trying again. This is mostly just useful for rate limiting, but maybe you'll be clever and have a reason to use it.</p>
-</div>
-</article>
-<aside class=col-md-4>
-<nav class=social-icons>
-<a href=https://github.com/jsatt rel=me target=_blank><i class="fa fa-github-square"></i></a>
-<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa fa-facebook-square"></i></a>
-<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa fa-twitter-square"></i></a>
-<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa fa-linkedin-square"></i></a>
-<a href=mailto:jsatt@jsatt.com><i class="fa fa-envelope"></i></a>
-<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa fa-rss-square"></i></a>
-</nav>
-<div id=related-posts>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-4-object-level-field-exclusion/>Abusing Django Rest Framework Part 4: Object-level field exclusion</a>
-<div class=timesince>2014-03-27</div>
-</div>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-3-object-level-read-only-fields/>Abusing Django Rest Framework Part 3: Object-level read-only fields</a>
-<div class=timesince>2014-03-26</div>
-</div>
-<div class=related-post>
-<a href=https://jsatt.com/blog/abusing-django-rest-framework-part-1-non-model-endpoints/>Abusing Django Rest Framework Part 1: Non-Model Endpoints</a>
-<div class=timesince>2014-01-29</div>
-</div>
-</div>
-<div class=keywords>
-<div class=keyword>
-<a href=https://jsatt.com/tags/python/>#python</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/testing/>#testing</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django/>#django</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/hacks/>#hacks</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/mocking/>#mocking</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/celery/>#celery</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/data-structures/>#data-structures</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/docker/>#docker</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/go/>#go</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/linux/>#linux</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/node/>#node</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/nose/>#nose</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/open-source/>#open-source</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/packages/>#packages</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/ruby/>#ruby</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/rust/>#rust</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/tox/>#tox</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a>
-</div>
-<div class=keyword>
-<a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a>
-</div>
-</div>
-</aside>
-</div>
-</div>
-</section><footer>
-<div class=container>
-<div class=row>
-<div class=col-md-12>
-<div class=nav-footer>
-<ul class=list-unstyled>
-<li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li>
-<li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-</footer>
-<script src=../../static/js/jquery.min.js></script>
+    throttle_classes  = InspectionThrottle</code></pre><p>By simply defining an <code>allow_request</code> method you are free to use whatever logic you want to throttle requests, so long as you return <code>True</code> to allow the request and raise the <code>Throttled</code> exception to deny the request. <code>Throttled</code> also accepts a kwarg of wait which will set the <code>X-Throttle-Wait-Second</code> header for notifying the client how long to wait before trying again. This is mostly just useful for rate limiting, but maybe you'll be clever and have a reason to use it.</p></div></article><aside class=col-md-4><nav class=social-icons><a href=https://github.com/jsatt rel=me target=_blank><i class="fa-brands fa-github"></i></a>
+<a href=https://www.facebook.com/jsatt0 rel=me target=_blank><i class="fa-brands fa-facebook"></i></a>
+<a href=https://twitter.com/jsatt rel=me target=_blank><i class="fa-brands fa-twitter"></i></a>
+<a href=https://www.linkedin.com/in/jsatterfield rel=me target=_blank><i class="fa-brands fa-linkedin"></i></a>
+<a href=mailto:jsatt@jsatt.com><i class="fa-solid fa-envelope"></i></a>
+<a href=https://jsatt.com/blog/feeds/rss/ target=_blank><i class="fa-solid fa-square-rss"></i></a></nav><div id=related-posts><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-4-object-level-field-exclusion/>Abusing Django Rest Framework Part 4: Object-level field exclusion</a><div class=timesince>2014-03-27</div></div><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-3-object-level-read-only-fields/>Abusing Django Rest Framework Part 3: Object-level read-only fields</a><div class=timesince>2014-03-26</div></div><div class=related-post><a href=https://jsatt.com/blog/abusing-django-rest-framework-part-1-non-model-endpoints/>Abusing Django Rest Framework Part 1: Non-Model Endpoints</a><div class=timesince>2014-01-29</div></div></div><div class=keywords><div class=keyword><a href=https://jsatt.com/tags/python/>#python</a></div><div class=keyword><a href=https://jsatt.com/tags/testing/>#testing</a></div><div class=keyword><a href=https://jsatt.com/tags/django/>#django</a></div><div class=keyword><a href=https://jsatt.com/tags/hacks/>#hacks</a></div><div class=keyword><a href=https://jsatt.com/tags/mocking/>#mocking</a></div><div class=keyword><a href=https://jsatt.com/tags/django-rest-framework/>#django-rest-framework</a></div><div class=keyword><a href=https://jsatt.com/tags/celery/>#celery</a></div><div class=keyword><a href=https://jsatt.com/tags/class-based-views/>#class-based-views</a></div><div class=keyword><a href=https://jsatt.com/tags/data-structures/>#data-structures</a></div><div class=keyword><a href=https://jsatt.com/tags/dev-ops/>#dev-ops</a></div><div class=keyword><a href=https://jsatt.com/tags/docker/>#docker</a></div><div class=keyword><a href=https://jsatt.com/tags/go/>#go</a></div><div class=keyword><a href=https://jsatt.com/tags/linux/>#linux</a></div><div class=keyword><a href=https://jsatt.com/tags/node/>#node</a></div><div class=keyword><a href=https://jsatt.com/tags/nose/>#nose</a></div><div class=keyword><a href=https://jsatt.com/tags/open-source/>#open-source</a></div><div class=keyword><a href=https://jsatt.com/tags/packages/>#packages</a></div><div class=keyword><a href=https://jsatt.com/tags/ruby/>#ruby</a></div><div class=keyword><a href=https://jsatt.com/tags/rust/>#rust</a></div><div class=keyword><a href=https://jsatt.com/tags/tox/>#tox</a></div><div class=keyword><a href=https://jsatt.com/tags/travis-ci/>#travis-ci</a></div><div class=keyword><a href=https://jsatt.com/tags/virtualenvs/>#virtualenvs</a></div></div></aside></div></div></section><footer><div class=container><div class=row><div class=col-md-12><div class=nav-footer><ul class=list-unstyled><li id=footer-menu-presentations><a href=https://jsatt.com/presentations/>Presentations</a></li><li id=footer-menu-resume><a href=https://jsatt.com/resume/>Resume</a></li></ul></div></div></div></div></footer><script src=../../static/js/jquery.min.js></script>
 <script src=../../static/js/prism.js></script>
-<script src=../../static/js/bootstrap.min.js></script>
-</body>
-</html>
+<script src=../../static/js/bootstrap.min.js></script></body></html>
