@@ -10,6 +10,7 @@ params:
 disableHugoGeneratorInject: true
 enableEmoji: true
 enableGitInfo: true
+enableRobotsTXT: true
 relativeURLs: true
 timeZone: UTC
 watch: true
