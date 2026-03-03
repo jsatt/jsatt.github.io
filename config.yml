@@ -7,6 +7,7 @@ params:
   author:
     user_name: jsatt
     display_name: Jeremy Satterfield
+    email: jsatt@jsatt.com
 disableHugoGeneratorInject: true
 enableEmoji: true
 enableGitInfo: true
@@ -29,6 +30,13 @@ outputFormats:
   ATOM:
     mediaType: 'application/atom+xml'
     path: /blog/feeds/atom/
+
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+        title: true
 
 outputs:
   home:
